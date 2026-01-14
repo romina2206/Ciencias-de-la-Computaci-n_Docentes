@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Modelo de estados de la materia</title>
+
+  <!-- Pyodide -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #5A2382;
+    }
+
+    button {
+      padding: 10px 15px;
+      margin: 5px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #output {
+      margin-top: 20px;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Estados de la materia – Modelo molecular</h1>
+
+<p>
+Este modelo representa <b>cómo cambia el movimiento molecular</b>
+según el estado de la materia.  
+No muestra moléculas reales: es un <b>modelo científico</b>.
+</p>
+
+<button onclick="mostrarEstado('solido')">Sólido</button>
+<button onclick="mostrarEstado('liquido')">Líquido</button>
+<button onclick="mostrarEstado('gaseoso')">Gaseoso</button>
+
+<div id="output"></div>
+
+<script>
+let pyodideReady = loadPyodide();
+
+async function mostrarEstado(estado) {
+  const pyodide = await pyodideReady;
+
+  const codigo = `
+import matplotlib.pyplot as plt
+import random
+
+velocidad = {
+    "solido": 0.02,
+    "liquido": 0.08,
+    "gaseoso": 0.2
+}
+
+x = [random.random() for _ in range(30)]
+y = [random.random() for _ in range(30)]
+
+for _ in range(25):
+    for i in range(30):
+        x[i] += random.uniform(-velocidad["${estado}"], velocidad["${estado}"])
+        y[i] += random.uniform(-velocidad["${estado}"], velocidad["${estado}"])
+
+        x[i] = min(max(x[i], 0), 1)
+        y[i] = min(max(y[i], 0), 1)
+
+plt.figure()
+plt.scatter(x, y)
+plt.xlim(0, 1)
+plt.ylim(0, 1)
+plt.title("Estado: ${estado.capitalize()}")
+plt.show()
+  `;
+
+  pyodide.runPython(codigo);
+}
+</script>
+
+</body>
+</html>
