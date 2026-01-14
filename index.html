@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <title>Estados de la materia – Modelo molecular</title>
 
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
-
 <style>
 body {
   font-family: Arial, sans-serif;
@@ -26,10 +24,6 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
-  background: #aaa;
-}
-
 input[type=range] {
   width: 300px;
 }
@@ -39,6 +33,11 @@ input[type=range] {
   padding: 15px;
   border-radius: 8px;
   margin-top: 15px;
+}
+
+canvas {
+  border: 1px solid #ccc;
+  background: #fff;
 }
 </style>
 </head>
@@ -50,19 +49,18 @@ input[type=range] {
 <div class="box">
 <h2>Consigna</h2>
 <p>
-Mové la temperatura y observá el modelo molecular.
-<br><br>
-<b>• ¿Qué tan juntas están las partículas?</b><br>
-<b>• ¿Cómo cambia su movimiento?</b><br><br>
-<i>Este es un modelo científico, no una imagen real.</i>
+Mové la temperatura y observá:
+<br>
+<b>¿Qué tan juntas están las partículas?</b><br>
+<b>¿Cómo cambia su movimiento?</b>
 </p>
 </div>
 
 <div class="box">
-<p>Temperatura: <span id="tempValor">20</span> °C</p>
-<input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizarTemp()">
-<br><br>
-<button id="btnSimular" disabled onclick="simular()">Cargando simulador...</button>
+Temperatura:
+<span id="tempValor">20</span> °C
+<br>
+<input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizar()">
 </div>
 
 <div class="box">
@@ -70,98 +68,68 @@ Mové la temperatura y observá el modelo molecular.
 </div>
 
 <div class="box">
-<div id="grafico"></div>
+<canvas id="canvas" width="400" height="400"></canvas>
 </div>
 
 <script>
-let pyodide = null;
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-async function iniciar() {
-  pyodide = await loadPyodide();
-  await pyodide.loadPackage(["matplotlib", "numpy"]);
+let particulas = [];
 
-  const btn = document.getElementById("btnSimular");
-  btn.disabled = false;
-  btn.innerText = "Simular";
-}
-
-iniciar();
-
-function actualizarTemp() {
+function actualizar() {
   const t = document.getElementById("temp").value;
   document.getElementById("tempValor").innerText = t;
-
-  let estado = "Líquido";
-  if (t < 0) estado = "Sólido";
-  if (t >= 100) estado = "Gaseoso";
-
-  document.getElementById("estadoTexto").innerText = estado;
-}
-
-async function simular() {
-  if (!pyodide) {
-    alert("El simulador todavía se está cargando");
-    return;
-  }
-
-  const t = document.getElementById("temp").value;
 
   let estado = "liquido";
   if (t < 0) estado = "solido";
   if (t >= 100) estado = "gaseoso";
 
-  const codigo = `
-import matplotlib.pyplot as plt
-import random
+  document.getElementById("estadoTexto").innerText =
+    estado.charAt(0).toUpperCase() + estado.slice(1);
 
-N = 36
-tray_x = []
-tray_y = []
-
-if "${estado}" == "solido":
-    for i in range(6):
-        for j in range(6):
-            tray_x.append([i*0.12 + 0.15])
-            tray_y.append([j*0.12 + 0.15])
-    pasos = 10
-    mov = 0.004
-
-elif "${estado}" == "liquido":
-    for _ in range(N):
-        tray_x.append([random.uniform(0.3,0.7)])
-        tray_y.append([random.uniform(0.3,0.7)])
-    pasos = 25
-    mov = 0.03
-
-else:
-    for _ in range(N):
-        tray_x.append([random.uniform(0,1)])
-        tray_y.append([random.uniform(0,1)])
-    pasos = 40
-    mov = 0.08
-
-for _ in range(pasos):
-    for i in range(N):
-        x = tray_x[i][-1] + random.uniform(-mov, mov)
-        y = tray_y[i][-1] + random.uniform(-mov, mov)
-        tray_x[i].append(min(max(x,0),1))
-        tray_y[i].append(min(max(y,0),1))
-
-plt.figure(figsize=(5,5))
-for i in range(N):
-    plt.plot(tray_x[i], tray_y[i], alpha=0.6)
-    plt.scatter(tray_x[i][-1], tray_y[i][-1])
-
-plt.title("Modelo molecular – Estado: ${estado}")
-plt.xlim(0,1)
-plt.ylim(0,1)
-plt.axis("off")
-plt.show()
-  `;
-
-  document.getElementById("grafico").innerHTML = "";
-  await pyodide.runPythonAsync(codigo);
+  crearParticulas(estado);
 }
+
+function crearParticulas(estado) {
+  particulas = [];
+  let velocidad = 0;
+
+  if (estado === "solido") velocidad = 0.2;
+  if (estado === "liquido") velocidad = 1;
+  if (estado === "gaseoso") velocidad = 3;
+
+  for (let i = 0; i < 36; i++) {
+    particulas.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * velocidad,
+      vy: (Math.random() - 0.5) * velocidad
+    });
+  }
+}
+
+function animar() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let p of particulas) {
+    p.x += p.vx;
+    p.y += p.vy;
+
+    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#0087C8";
+    ctx.fill();
+  }
+
+  requestAnimationFrame(animar);
+}
+
+actualizar();
+animar();
 </script>
 
 </body>
