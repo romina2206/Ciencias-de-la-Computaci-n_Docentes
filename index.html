@@ -34,4 +34,120 @@ input[type=range] {
   background: white;
   padding: 15px;
   border-radius: 8px;
-  margin-top:
+  margin-top: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Estados de la materia</h1>
+
+<div class="box">
+<h2>Consigna</h2>
+<p>
+Mové la temperatura y observá:
+<br>
+<b>¿Qué tan juntas están las partículas?</b><br>
+<b>¿Qué tan rápido se mueven?</b>
+</p>
+</div>
+
+<div class="box">
+<p>Temperatura: <span id="tempValor">20</span> °C</p>
+<input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizarTemp()">
+<br><br>
+<button onclick="simular()">Simular</button>
+</div>
+
+<div class="box">
+<strong>Estado:</strong> <span id="estadoTexto">Líquido</span>
+</div>
+
+<div class="box">
+<div id="grafico"></div>
+</div>
+
+<script>
+let pyodide;
+
+async function iniciar() {
+  pyodide = await loadPyodide();
+  await pyodide.loadPackage("matplotlib");
+}
+iniciar();
+
+function actualizarTemp() {
+  const t = document.getElementById("temp").value;
+  document.getElementById("tempValor").innerText = t;
+
+  let estado = "Líquido";
+  if (t < 0) estado = "Sólido";
+  if (t >= 100) estado = "Gaseoso";
+
+  document.getElementById("estadoTexto").innerText = estado;
+}
+
+async function simular() {
+  const t = document.getElementById("temp").value;
+
+  let estado = "liquido";
+  if (t < 0) estado = "solido";
+  if (t >= 100) estado = "gaseoso";
+
+  const codigo = `
+import matplotlib
+matplotlib.use("module://matplotlib_pyodide.html5_canvas")
+
+import matplotlib.pyplot as plt
+import random
+
+N = 36
+x = []
+y = []
+
+if "${estado}" == "solido":
+    for i in range(6):
+        for j in range(6):
+            x.append(i * 0.12 + 0.1)
+            y.append(j * 0.12 + 0.1)
+    velocidad = 0.005
+
+elif "${estado}" == "liquido":
+    for _ in range(N):
+        x.append(random.uniform(0.3, 0.7))
+        y.append(random.uniform(0.3, 0.7))
+    velocidad = 0.03
+
+else:
+    for _ in range(N):
+        x.append(random.uniform(0, 1))
+        y.append(random.uniform(0, 1))
+    velocidad = 0.08
+
+fig, ax = plt.subplots()
+sc = ax.scatter(x, y, s=50)
+
+ax.set_xlim(0,1)
+ax.set_ylim(0,1)
+ax.set_title("Estado: ${estado}")
+
+for _ in range(30):
+    for i in range(N):
+        x[i] += random.uniform(-velocidad, velocidad)
+        y[i] += random.uniform(-velocidad, velocidad)
+        x[i] = min(max(x[i], 0), 1)
+        y[i] = min(max(y[i], 0), 1)
+    sc.set_offsets(list(zip(x,y)))
+    plt.pause(0.05)
+
+plt.show()
+  `;
+
+  document.getElementById("grafico").innerHTML = "";
+  await pyodide.runPythonAsync(codigo);
+}
+</script>
+
+</body>
+</html>
