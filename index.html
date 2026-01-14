@@ -13,13 +13,8 @@ body {
   padding: 20px;
 }
 
-h1 {
-  color: #5A2382;
-}
-
-h2 {
-  color: #0087C8;
-}
+h1 { color: #5A2382; }
+h2 { color: #0087C8; }
 
 button {
   padding: 10px 15px;
@@ -41,11 +36,6 @@ input[type=range] {
   border-radius: 8px;
   margin-top: 15px;
 }
-
-img {
-  max-width: 100%;
-  border-radius: 8px;
-}
 </style>
 </head>
 
@@ -56,43 +46,36 @@ img {
 <div class="box">
 <h2>Consigna</h2>
 <p>
-Observá la imagen y la simulación.
+Mové el control de temperatura y observá cómo cambia el movimiento de las partículas.
 <br>
-<strong>Pregunta:</strong> ¿Cómo cambia el movimiento de las partículas cuando aumenta la temperatura?
+<strong>Pregunta:</strong> ¿Qué relación hay entre temperatura y movimiento molecular?
 </p>
 </div>
 
 <div class="box">
-<h2>Imagen real</h2>
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Ice_water_vapor.jpg/640px-Ice_water_vapor.jpg">
-</div>
-
-<div class="box">
-<h2>Control de temperatura</h2>
-<p>
-Temperatura: <span id="tempValor">20</span> °C
-</p>
+<h2>Temperatura</h2>
+<p>Temperatura: <span id="tempValor">20</span> °C</p>
 <input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizarTemp()">
 <br><br>
 <button onclick="simular()">Simular</button>
 </div>
 
-<div class="box" id="estadoBox">
+<div class="box">
 <strong>Estado:</strong> <span id="estadoTexto">Líquido</span>
 </div>
 
 <div class="box" id="grafico">
-<p>Cargando simulación…</p>
+<p>El gráfico aparecerá aquí ⬇</p>
 </div>
 
 <script>
 let pyodide;
 
-async function iniciarPyodide() {
+async function iniciar() {
   pyodide = await loadPyodide();
   await pyodide.loadPackage("matplotlib");
 }
-iniciarPyodide();
+iniciar();
 
 function actualizarTemp() {
   const t = document.getElementById("temp").value;
@@ -115,6 +98,9 @@ async function simular() {
   if (t >= 100) { estado = "gaseoso"; vel = 0.2; }
 
   const codigo = `
+import matplotlib
+matplotlib.use("module://matplotlib_pyodide.html5_canvas")
+
 import matplotlib.pyplot as plt
 import random
 
@@ -123,7 +109,7 @@ velocidad = ${vel}
 x = [random.random() for _ in range(30)]
 y = [random.random() for _ in range(30)]
 
-for _ in range(20):
+for _ in range(25):
     for i in range(30):
         x[i] += random.uniform(-velocidad, velocidad)
         y[i] += random.uniform(-velocidad, velocidad)
@@ -138,7 +124,7 @@ plt.ylim(0,1)
 plt.show()
   `;
 
-  pyodide.runPython(codigo);
+  await pyodide.runPythonAsync(codigo);
 }
 </script>
 
