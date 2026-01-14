@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Estados de la materia – Simulación</title>
+<title>Estados de la materia – Modelo molecular</title>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
 
@@ -46,14 +46,15 @@ input[type=range] {
 <div class="box">
 <h2>Consigna</h2>
 <p>
-Mové el control de temperatura y observá cómo cambia el movimiento de las partículas.
+Mové el control de temperatura y observá:
 <br>
-<strong>Pregunta:</strong> ¿Qué relación hay entre temperatura y movimiento molecular?
+<b>¿Cómo están ubicadas las partículas?</b>
+<br>
+<b>¿Cómo se mueven?</b>
 </p>
 </div>
 
 <div class="box">
-<h2>Temperatura</h2>
 <p>Temperatura: <span id="tempValor">20</span> °C</p>
 <input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizarTemp()">
 <br><br>
@@ -64,8 +65,8 @@ Mové el control de temperatura y observá cómo cambia el movimiento de las par
 <strong>Estado:</strong> <span id="estadoTexto">Líquido</span>
 </div>
 
-<div class="box" id="grafico">
-<p>El gráfico aparecerá aquí ⬇</p>
+<div class="box">
+<p>Modelo molecular:</p>
 </div>
 
 <script>
@@ -92,10 +93,8 @@ async function simular() {
   const t = document.getElementById("temp").value;
 
   let estado = "liquido";
-  let vel = 0.08;
-
-  if (t < 0) { estado = "solido"; vel = 0.02; }
-  if (t >= 100) { estado = "gaseoso"; vel = 0.2; }
+  if (t < 0) estado = "solido";
+  if (t >= 100) estado = "gaseoso";
 
   const codigo = `
 import matplotlib
@@ -103,21 +102,44 @@ matplotlib.use("module://matplotlib_pyodide.html5_canvas")
 
 import matplotlib.pyplot as plt
 import random
+import numpy as np
 
-velocidad = ${vel}
+N = 36
 
-x = [random.random() for _ in range(30)]
-y = [random.random() for _ in range(30)]
+x = []
+y = []
 
-for _ in range(25):
-    for i in range(30):
-        x[i] += random.uniform(-velocidad, velocidad)
-        y[i] += random.uniform(-velocidad, velocidad)
+# POSICIONES INICIALES SEGÚN ESTADO
+if "${estado}" == "solido":
+    for i in range(6):
+        for j in range(6):
+            x.append(i * 0.15)
+            y.append(j * 0.15)
+    movimiento = 0.01
+
+elif "${estado}" == "liquido":
+    for _ in range(N):
+        x.append(random.uniform(0.2, 0.8))
+        y.append(random.uniform(0.2, 0.8))
+    movimiento = 0.05
+
+else:  # gaseoso
+    for _ in range(N):
+        x.append(random.uniform(0, 1))
+        y.append(random.uniform(0, 1))
+    movimiento = 0.15
+
+# SIMULACIÓN DE MOVIMIENTO (trayectoria corta)
+plt.figure()
+
+for _ in range(15):
+    for i in range(N):
+        x[i] += random.uniform(-movimiento, movimiento)
+        y[i] += random.uniform(-movimiento, movimiento)
         x[i] = min(max(x[i], 0), 1)
         y[i] = min(max(y[i], 0), 1)
+    plt.scatter(x, y, color="blue", alpha=0.6)
 
-plt.figure()
-plt.scatter(x, y)
 plt.title("Estado: ${estado}")
 plt.xlim(0,1)
 plt.ylim(0,1)
