@@ -53,9 +53,8 @@ input[type=range] {
 Mové la temperatura y observá el modelo molecular.
 <br><br>
 <b>• ¿Qué tan juntas están las partículas?</b><br>
-<b>• ¿Cómo cambia su movimiento?</b><br>
-<br>
-Recordá: <i>esto es un modelo, no una imagen real</i>.
+<b>• ¿Cómo cambia su movimiento?</b><br><br>
+<i>Este es un modelo científico, no una imagen real.</i>
 </p>
 </div>
 
@@ -63,7 +62,7 @@ Recordá: <i>esto es un modelo, no una imagen real</i>.
 <p>Temperatura: <span id="tempValor">20</span> °C</p>
 <input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizarTemp()">
 <br><br>
-<button id="btnSimular" onclick="simular()" disabled>Cargando simulador...</button>
+<button id="btnSimular" disabled onclick="simular()">Cargando simulador...</button>
 </div>
 
 <div class="box">
@@ -79,7 +78,7 @@ let pyodide = null;
 
 async function iniciar() {
   pyodide = await loadPyodide();
-  await pyodide.loadPackage("matplotlib");
+  await pyodide.loadPackage(["matplotlib", "numpy"]);
 
   const btn = document.getElementById("btnSimular");
   btn.disabled = false;
@@ -112,52 +111,46 @@ async function simular() {
   if (t >= 100) estado = "gaseoso";
 
   const codigo = `
-import matplotlib
-matplotlib.use("module://matplotlib_pyodide.html5_canvas")
-
 import matplotlib.pyplot as plt
 import random
 
 N = 36
-trayectorias_x = []
-trayectorias_y = []
+tray_x = []
+tray_y = []
 
 if "${estado}" == "solido":
     for i in range(6):
         for j in range(6):
-            trayectorias_x.append([i*0.12 + 0.15])
-            trayectorias_y.append([j*0.12 + 0.15])
+            tray_x.append([i*0.12 + 0.15])
+            tray_y.append([j*0.12 + 0.15])
     pasos = 10
-    movimiento = 0.005
+    mov = 0.004
 
 elif "${estado}" == "liquido":
     for _ in range(N):
-        trayectorias_x.append([random.uniform(0.3,0.7)])
-        trayectorias_y.append([random.uniform(0.3,0.7)])
+        tray_x.append([random.uniform(0.3,0.7)])
+        tray_y.append([random.uniform(0.3,0.7)])
     pasos = 25
-    movimiento = 0.03
+    mov = 0.03
 
 else:
     for _ in range(N):
-        trayectorias_x.append([random.uniform(0,1)])
-        trayectorias_y.append([random.uniform(0,1)])
+        tray_x.append([random.uniform(0,1)])
+        tray_y.append([random.uniform(0,1)])
     pasos = 40
-    movimiento = 0.08
+    mov = 0.08
 
 for _ in range(pasos):
     for i in range(N):
-        x = trayectorias_x[i][-1] + random.uniform(-movimiento, movimiento)
-        y = trayectorias_y[i][-1] + random.uniform(-movimiento, movimiento)
-        x = min(max(x,0),1)
-        y = min(max(y,0),1)
-        trayectorias_x[i].append(x)
-        trayectorias_y[i].append(y)
+        x = tray_x[i][-1] + random.uniform(-mov, mov)
+        y = tray_y[i][-1] + random.uniform(-mov, mov)
+        tray_x[i].append(min(max(x,0),1))
+        tray_y[i].append(min(max(y,0),1))
 
 plt.figure(figsize=(5,5))
-
 for i in range(N):
-    plt.plot(trayectorias_x[i], trayectorias_y[i], alpha=0.6)
-    plt.scatter(trayectorias_x[i][-1], trayectorias_y[i][-1])
+    plt.plot(tray_x[i], tray_y[i], alpha=0.6)
+    plt.scatter(tray_x[i][-1], tray_y[i][-1])
 
 plt.title("Modelo molecular – Estado: ${estado}")
 plt.xlim(0,1)
