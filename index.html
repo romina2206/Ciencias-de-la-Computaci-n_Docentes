@@ -1,86 +1,140 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Modelo de estados de la materia</title>
+<meta charset="UTF-8">
+<title>Estados de la materia – Simulación</title>
 
-  <!-- Pyodide -->
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f7f7f7;
-      padding: 20px;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  padding: 20px;
+}
 
-    h1 {
-      color: #5A2382;
-    }
+h1 {
+  color: #5A2382;
+}
 
-    button {
-      padding: 10px 15px;
-      margin: 5px;
-      font-size: 14px;
-      cursor: pointer;
-    }
+h2 {
+  color: #0087C8;
+}
 
-    #output {
-      margin-top: 20px;
-      background: white;
-      padding: 10px;
-      border-radius: 5px;
-    }
-  </style>
+button {
+  padding: 10px 15px;
+  margin: 5px;
+  background: #E6500F;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+input[type=range] {
+  width: 300px;
+}
+
+.box {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+</style>
 </head>
+
 <body>
 
-<h1>Estados de la materia – Modelo molecular</h1>
+<h1>Estados de la materia</h1>
 
+<div class="box">
+<h2>Consigna</h2>
 <p>
-Este modelo representa <b>cómo cambia el movimiento molecular</b>
-según el estado de la materia.  
-No muestra moléculas reales: es un <b>modelo científico</b>.
+Observá la imagen y la simulación.
+<br>
+<strong>Pregunta:</strong> ¿Cómo cambia el movimiento de las partículas cuando aumenta la temperatura?
 </p>
+</div>
 
-<button onclick="mostrarEstado('solido')">Sólido</button>
-<button onclick="mostrarEstado('liquido')">Líquido</button>
-<button onclick="mostrarEstado('gaseoso')">Gaseoso</button>
+<div class="box">
+<h2>Imagen real</h2>
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Ice_water_vapor.jpg/640px-Ice_water_vapor.jpg">
+</div>
 
-<div id="output"></div>
+<div class="box">
+<h2>Control de temperatura</h2>
+<p>
+Temperatura: <span id="tempValor">20</span> °C
+</p>
+<input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizarTemp()">
+<br><br>
+<button onclick="simular()">Simular</button>
+</div>
+
+<div class="box" id="estadoBox">
+<strong>Estado:</strong> <span id="estadoTexto">Líquido</span>
+</div>
+
+<div class="box" id="grafico">
+<p>Cargando simulación…</p>
+</div>
 
 <script>
-let pyodideReady = loadPyodide();
+let pyodide;
 
-async function mostrarEstado(estado) {
-  const pyodide = await pyodideReady;
+async function iniciarPyodide() {
+  pyodide = await loadPyodide();
+  await pyodide.loadPackage("matplotlib");
+}
+iniciarPyodide();
+
+function actualizarTemp() {
+  const t = document.getElementById("temp").value;
+  document.getElementById("tempValor").innerText = t;
+
+  let estado = "Líquido";
+  if (t < 0) estado = "Sólido";
+  if (t >= 100) estado = "Gaseoso";
+
+  document.getElementById("estadoTexto").innerText = estado;
+}
+
+async function simular() {
+  const t = document.getElementById("temp").value;
+
+  let estado = "liquido";
+  let vel = 0.08;
+
+  if (t < 0) { estado = "solido"; vel = 0.02; }
+  if (t >= 100) { estado = "gaseoso"; vel = 0.2; }
 
   const codigo = `
 import matplotlib.pyplot as plt
 import random
 
-velocidad = {
-    "solido": 0.02,
-    "liquido": 0.08,
-    "gaseoso": 0.2
-}
+velocidad = ${vel}
 
 x = [random.random() for _ in range(30)]
 y = [random.random() for _ in range(30)]
 
-for _ in range(25):
+for _ in range(20):
     for i in range(30):
-        x[i] += random.uniform(-velocidad["${estado}"], velocidad["${estado}"])
-        y[i] += random.uniform(-velocidad["${estado}"], velocidad["${estado}"])
-
+        x[i] += random.uniform(-velocidad, velocidad)
+        y[i] += random.uniform(-velocidad, velocidad)
         x[i] = min(max(x[i], 0), 1)
         y[i] = min(max(y[i], 0), 1)
 
 plt.figure()
 plt.scatter(x, y)
-plt.xlim(0, 1)
-plt.ylim(0, 1)
-plt.title("Estado: ${estado.capitalize()}")
+plt.title("Estado: ${estado}")
+plt.xlim(0,1)
+plt.ylim(0,1)
 plt.show()
   `;
 
