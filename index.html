@@ -26,6 +26,10 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  background: #aaa;
+}
+
 input[type=range] {
   width: 300px;
 }
@@ -46,10 +50,12 @@ input[type=range] {
 <div class="box">
 <h2>Consigna</h2>
 <p>
-Mové la temperatura y observá:
+Mové la temperatura y observá el modelo molecular.
+<br><br>
+<b>• ¿Qué tan juntas están las partículas?</b><br>
+<b>• ¿Cómo cambia su movimiento?</b><br>
 <br>
-<b>¿Qué tan juntas están las partículas?</b><br>
-<b>¿Qué tan rápido se mueven?</b>
+Recordá: <i>esto es un modelo, no una imagen real</i>.
 </p>
 </div>
 
@@ -57,7 +63,7 @@ Mové la temperatura y observá:
 <p>Temperatura: <span id="tempValor">20</span> °C</p>
 <input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizarTemp()">
 <br><br>
-<button onclick="simular()">Simular</button>
+<button id="btnSimular" onclick="simular()" disabled>Cargando simulador...</button>
 </div>
 
 <div class="box">
@@ -69,12 +75,17 @@ Mové la temperatura y observá:
 </div>
 
 <script>
-let pyodide;
+let pyodide = null;
 
 async function iniciar() {
   pyodide = await loadPyodide();
   await pyodide.loadPackage("matplotlib");
+
+  const btn = document.getElementById("btnSimular");
+  btn.disabled = false;
+  btn.innerText = "Simular";
 }
+
 iniciar();
 
 function actualizarTemp() {
@@ -89,6 +100,11 @@ function actualizarTemp() {
 }
 
 async function simular() {
+  if (!pyodide) {
+    alert("El simulador todavía se está cargando");
+    return;
+  }
+
   const t = document.getElementById("temp").value;
 
   let estado = "liquido";
@@ -103,44 +119,50 @@ import matplotlib.pyplot as plt
 import random
 
 N = 36
-x = []
-y = []
+trayectorias_x = []
+trayectorias_y = []
 
 if "${estado}" == "solido":
     for i in range(6):
         for j in range(6):
-            x.append(i * 0.12 + 0.1)
-            y.append(j * 0.12 + 0.1)
-    velocidad = 0.005
+            trayectorias_x.append([i*0.12 + 0.15])
+            trayectorias_y.append([j*0.12 + 0.15])
+    pasos = 10
+    movimiento = 0.005
 
 elif "${estado}" == "liquido":
     for _ in range(N):
-        x.append(random.uniform(0.3, 0.7))
-        y.append(random.uniform(0.3, 0.7))
-    velocidad = 0.03
+        trayectorias_x.append([random.uniform(0.3,0.7)])
+        trayectorias_y.append([random.uniform(0.3,0.7)])
+    pasos = 25
+    movimiento = 0.03
 
 else:
     for _ in range(N):
-        x.append(random.uniform(0, 1))
-        y.append(random.uniform(0, 1))
-    velocidad = 0.08
+        trayectorias_x.append([random.uniform(0,1)])
+        trayectorias_y.append([random.uniform(0,1)])
+    pasos = 40
+    movimiento = 0.08
 
-fig, ax = plt.subplots()
-sc = ax.scatter(x, y, s=50)
-
-ax.set_xlim(0,1)
-ax.set_ylim(0,1)
-ax.set_title("Estado: ${estado}")
-
-for _ in range(30):
+for _ in range(pasos):
     for i in range(N):
-        x[i] += random.uniform(-velocidad, velocidad)
-        y[i] += random.uniform(-velocidad, velocidad)
-        x[i] = min(max(x[i], 0), 1)
-        y[i] = min(max(y[i], 0), 1)
-    sc.set_offsets(list(zip(x,y)))
-    plt.pause(0.05)
+        x = trayectorias_x[i][-1] + random.uniform(-movimiento, movimiento)
+        y = trayectorias_y[i][-1] + random.uniform(-movimiento, movimiento)
+        x = min(max(x,0),1)
+        y = min(max(y,0),1)
+        trayectorias_x[i].append(x)
+        trayectorias_y[i].append(y)
 
+plt.figure(figsize=(5,5))
+
+for i in range(N):
+    plt.plot(trayectorias_x[i], trayectorias_y[i], alpha=0.6)
+    plt.scatter(trayectorias_x[i][-1], trayectorias_y[i][-1])
+
+plt.title("Modelo molecular – Estado: ${estado}")
+plt.xlim(0,1)
+plt.ylim(0,1)
+plt.axis("off")
 plt.show()
   `;
 
