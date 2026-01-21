@@ -7,34 +7,99 @@
 <style>
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f4f4f4;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f7f7f7;
 }
-#panel {
-  background: white;
-  padding: 10px;
+
+header {
+  background: #5A2382;
+  color: white;
+  padding: 15px;
   text-align: center;
 }
+
+header h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+header p {
+  margin: 5px 0 0;
+  font-size: 14px;
+}
+
+#layout {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+#panel {
+  width: 260px;
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+#panel h2 {
+  color: #0087C8;
+  font-size: 18px;
+  margin-top: 0;
+}
+
+#panel input[type=range] {
+  width: 100%;
+}
+
+#estado {
+  font-weight: bold;
+}
+
+#explicacion {
+  margin-top: 10px;
+  font-size: 14px;
+  background: #f0f8ff;
+  padding: 10px;
+  border-radius: 5px;
+}
+
 #scene {
   width: 600px;
   height: 400px;
-  margin: auto;
-  border: 2px solid #ccc;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 </style>
 </head>
 
 <body>
 
-<div id="panel">
-  Temperatura:
-  <input type="range" id="temp" min="-20" max="120" value="20">
-  <span id="t">20</span> °C
-  <br>
-  Estado: <strong><span id="estado">Líquido</span></strong>
-</div>
+<header>
+  <h1>Estados de la materia – Agua</h1>
+  <p>Mové la temperatura y observá cómo se comportan las moléculas</p>
+</header>
 
-<div id="scene"></div>
+<div id="layout">
+
+  <div id="panel">
+    <h2>Temperatura</h2>
+
+    <input type="range" id="temp" min="-20" max="120" value="20">
+    <p><strong><span id="t">20</span> °C</strong></p>
+
+    <p>Estado: <span id="estado">Líquido</span></p>
+
+    <div id="explicacion">
+      Las moléculas están juntas y se deslizan unas sobre otras.
+    </div>
+  </div>
+
+  <div id="scene"></div>
+
+</div>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 
@@ -60,12 +125,11 @@ const light = new THREE.PointLight(0xffffff, 0.8);
 light.position.set(10,10,10);
 scene.add(light);
 
-// MOLÉCULAS (esferas = moléculas de agua)
+// MOLÉCULAS
 const molecules = [];
 const N = 30;
 const limits = 4;
 
-// CREAR MOLÉCULAS (NO SE DESTRUYEN)
 for (let i=0; i<N; i++) {
   const geo = new THREE.SphereGeometry(0.3, 16, 16);
   const mat = new THREE.MeshStandardMaterial({color: 0x0087C8});
@@ -78,25 +142,38 @@ for (let i=0; i<N; i++) {
   );
 
   m.velocity = new THREE.Vector3();
-  m.home = m.position.clone(); // posición sólida
+  m.home = m.position.clone();
 
   molecules.push(m);
   scene.add(m);
 }
 
-// ESTADO
 let estado = "liquido";
 
 function actualizarEstado() {
   const T = temp.value;
-  document.getElementById("t").innerText = T;
+  t.innerText = T;
 
-  if (T < 0) estado = "solido";
-  else if (T >= 100) estado = "gaseoso";
-  else estado = "liquido";
+  if (T < 0) {
+    estado = "solido";
+    estadoTxt("Sólido",
+      "Las moléculas vibran en su lugar, pero no se desplazan.");
+  }
+  else if (T >= 100) {
+    estado = "gaseoso";
+    estadoTxt("Gaseoso",
+      "Las moléculas se mueven muy rápido y ocupan todo el espacio.");
+  }
+  else {
+    estado = "liquido";
+    estadoTxt("Líquido",
+      "Las moléculas están juntas y se deslizan unas sobre otras.");
+  }
+}
 
-  document.getElementById("estado").innerText =
-    estado.charAt(0).toUpperCase() + estado.slice(1);
+function estadoTxt(nombre, texto) {
+  document.getElementById("estado").innerText = nombre;
+  document.getElementById("explicacion").innerText = texto;
 }
 
 temp.oninput = actualizarEstado;
@@ -107,44 +184,36 @@ function animate() {
 
   molecules.forEach(m => {
 
-  if (estado === "solido") {
-    // 🔒 SOLO vibran en el lugar
-    m.position.x = m.home.x + (Math.random()-0.5)*0.05;
-    m.position.y = m.home.y + (Math.random()-0.5)*0.05;
-    m.position.z = m.home.z + (Math.random()-0.5)*0.05;
+    if (estado === "solido") {
+      m.position.x = m.home.x + (Math.random()-0.5)*0.05;
+      m.position.y = m.home.y + (Math.random()-0.5)*0.05;
+      m.position.z = m.home.z + (Math.random()-0.5)*0.05;
+      m.velocity.set(0,0,0);
+    }
 
-    m.velocity.set(0,0,0); // ❗ NO traslación
-  }
+    if (estado === "liquido") {
+      m.velocity.add(new THREE.Vector3(
+        (Math.random()-0.5)*0.005,
+        (Math.random()-0.5)*0.005,
+        (Math.random()-0.5)*0.005
+      ));
+      m.velocity.multiplyScalar(0.85);
+      m.position.add(m.velocity);
+    }
 
-  if (estado === "liquido") {
-    // 💧 Movimiento lento y cercano
-    m.velocity.add(new THREE.Vector3(
-      (Math.random()-0.5)*0.005,
-      (Math.random()-0.5)*0.005,
-      (Math.random()-0.5)*0.005
-    ));
+    if (estado === "gaseoso") {
+      m.velocity.add(new THREE.Vector3(
+        (Math.random()-0.5)*0.05,
+        (Math.random()-0.5)*0.05,
+        (Math.random()-0.5)*0.05
+      ));
+      m.position.add(m.velocity);
+    }
 
-    m.velocity.multiplyScalar(0.85); // mucho rozamiento
-    m.position.add(m.velocity);
-  }
-
-  if (estado === "gaseoso") {
-    // 💨 Movimiento rápido
-    m.velocity.add(new THREE.Vector3(
-      (Math.random()-0.5)*0.05,
-      (Math.random()-0.5)*0.05,
-      (Math.random()-0.5)*0.05
-    ));
-
-    m.position.add(m.velocity);
-  }
-
-  // paredes
-  ["x","y","z"].forEach(a=>{
-    if (Math.abs(m.position[a]) > limits) m.velocity[a] *= -1;
+    ["x","y","z"].forEach(a=>{
+      if (Math.abs(m.position[a]) > limits) m.velocity[a] *= -1;
+    });
   });
-
-
 
   renderer.render(scene, camera);
 }
