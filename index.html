@@ -2,7 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Estados de la materia – Modelo molecular</title>
+<title>Estados de la materia – Modelo molecular (3D)</title>
+
+<script src="https://www.glowscript.org/lib/glow.3.2.min.js"></script>
+<script src="https://www.glowscript.org/lib/RSrun.3.2.min.js"></script>
 
 <style>
 body {
@@ -14,30 +17,11 @@ body {
 h1 { color: #5A2382; }
 h2 { color: #0087C8; }
 
-button {
-  padding: 10px 15px;
-  margin: 5px;
-  background: #E6500F;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-input[type=range] {
-  width: 300px;
-}
-
 .box {
   background: white;
   padding: 15px;
   border-radius: 8px;
   margin-top: 15px;
-}
-
-canvas {
-  border: 1px solid #ccc;
-  background: #fff;
 }
 </style>
 </head>
@@ -49,8 +33,7 @@ canvas {
 <div class="box">
 <h2>Consigna</h2>
 <p>
-Mové la temperatura y observá:
-<br>
+Mové la temperatura y observá:<br>
 <b>¿Qué tan juntas están las partículas?</b><br>
 <b>¿Cómo cambia su movimiento?</b>
 </p>
@@ -58,24 +41,67 @@ Mové la temperatura y observá:
 
 <div class="box">
 Temperatura:
-<span id="tempValor">20</span> °C
-<br>
-<input type="range" min="-10" max="120" value="20" id="temp" oninput="actualizar()">
+<span id="tempValor">20</span> °C<br>
+<input type="range" min="-10" max="120" value="20" id="temp">
 </div>
 
 <div class="box">
 <strong>Estado:</strong> <span id="estadoTexto">Líquido</span>
 </div>
 
-<div class="box">
-<canvas id="canvas" width="400" height="400"></canvas>
-</div>
-
-<script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-
+<script type="text/javascript">
+let escena;
 let particulas = [];
+
+function iniciarEscena() {
+  escena = canvas({
+    width: 500,
+    height: 400,
+    background: color.white
+  });
+}
+
+function crearParticulas(estado) {
+  // borrar anteriores
+  for (let p of particulas) p.visible = false;
+  particulas = [];
+
+  let velocidad = 0.5;
+  let separacion = 1.2;
+
+  if (estado === "solido") {
+    velocidad = 0.1;
+    separacion = 0.8;
+  }
+  if (estado === "liquido") {
+    velocidad = 0.5;
+    separacion = 1.2;
+  }
+  if (estado === "gaseoso") {
+    velocidad = 2;
+    separacion = 2.5;
+  }
+
+  for (let i = 0; i < 30; i++) {
+    let p = sphere({
+      pos: vector(
+        (Math.random() - 0.5) * separacion * 5,
+        (Math.random() - 0.5) * separacion * 5,
+        (Math.random() - 0.5) * separacion * 5
+      ),
+      radius: 0.3,
+      color: color.cyan
+    });
+
+    p.vel = vector(
+      (Math.random() - 0.5) * velocidad,
+      (Math.random() - 0.5) * velocidad,
+      (Math.random() - 0.5) * velocidad
+    );
+
+    particulas.push(p);
+  }
+}
 
 function actualizar() {
   const t = document.getElementById("temp").value;
@@ -91,45 +117,22 @@ function actualizar() {
   crearParticulas(estado);
 }
 
-function crearParticulas(estado) {
-  particulas = [];
-  let velocidad = 0;
-
-  if (estado === "solido") velocidad = 0.2;
-  if (estado === "liquido") velocidad = 1;
-  if (estado === "gaseoso") velocidad = 3;
-
-  for (let i = 0; i < 36; i++) {
-    particulas.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * velocidad,
-      vy: (Math.random() - 0.5) * velocidad
-    });
-  }
-}
-
 function animar() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+  rate(60);
   for (let p of particulas) {
-    p.x += p.vx;
-    p.y += p.vy;
+    p.pos = p.pos.add(p.vel);
 
-    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = "#0087C8";
-    ctx.fill();
+    if (Math.abs(p.pos.x) > 5) p.vel.x *= -1;
+    if (Math.abs(p.pos.y) > 5) p.vel.y *= -1;
+    if (Math.abs(p.pos.z) > 5) p.vel.z *= -1;
   }
-
-  requestAnimationFrame(animar);
 }
 
+iniciarEscena();
 actualizar();
-animar();
+setInterval(animar, 16);
+
+document.getElementById("temp").oninput = actualizar;
 </script>
 
 </body>
