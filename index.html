@@ -2,122 +2,188 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Estados de la materia – 3D funcional</title>
-
-<script src="https://www.glowscript.org/lib/glow.3.2.min.js"></script>
-<script src="https://www.glowscript.org/lib/RSrun.3.2.min.js"></script>
-
+<title>Estados de la materia – Modelo molecular 3D</title>
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
-#panel {
-  padding: 10px;
-  background: #f7f7f7;
-}
+    body {
+        font-family: Arial, sans-serif;
+        background: #f7f7f7;
+        padding: 20px;
+        text-align: center;
+    }
+    h1 { color: #5A2382; }
+    
+    /* Contenedor para GlowScript */
+    #glowscript {
+        width: 100%;
+        max-width: 640px;
+        margin: 0 auto;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        background: white;
+    }
+
+    /* Estilos para los controles generados por VPython */
+    .ui-slider { background: #ddd; }
+    .ui-slider-handle { background: #E6500F !important; }
 </style>
+
+<link type="text/css" href="https://s3.amazonaws.com/glowscript/css/redmond/2.1/jquery-ui.custom.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery-ui.custom.min.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/glowscript/package/glow.3.2.min.js"></script>
+
 </head>
 
 <body>
 
-<div id="panel">
-Temperatura:
-<span id="tempValor">20</span> °C
-<input type="range" min="-10" max="120" value="20" id="temp">
-<br>
-Estado: <strong><span id="estadoTexto">Líquido</span></strong>
-</div>
+<h1>Estados de la materia (3D)</h1>
+
+<div id="glowscript" class="glowscript"></div>
+
+<script type="text/vpython">
+GlowScript 3.2 VPython
+
+# --- 1. Configuración de la Escena ---
+scene.bind('keydown', lambda evt: None) # Evitar scroll con teclas
+scene.width = 600
+scene.height = 450
+scene.background = color.white
+scene.userzoom = False 
+scene.userspin = True  # Permitir rotar la caja con el mouse
+scene.range = 12
+
+# Caja contenedora (Wireframe) para ver el volumen
+caja = box(pos=vec(0,0,0), size=vec(20, 20, 20), color=color.black, opacity=0.1)
+# Paredes invisibles para colisiones (tamaño caja / 2 - radio partícula)
+limite = 9.5 
+
+# --- 2. Variables y Partículas ---
+N = 60  # Cantidad de partículas
+particulas = []
+velocidad_base = 1
+estado = "liquido"
+
+# Creamos las esferas
+for i in range(N):
+    # Posición aleatoria inicial
+    x = random() * 18 - 9
+    y = random() * 18 - 9
+    z = random() * 18 - 9
+    
+    # Creamos la esfera
+    p = sphere(pos=vec(x,y,z), radius=0.4, color=vec(0, 0.53, 0.78))
+    
+    # Propiedades físicas personalizadas
+    p.v = vec(random()-0.5, random()-0.5, random()-0.5) # Velocidad
+    p.home = vec(x,y,z) # Posición "hogar" para el estado sólido
+    
+    particulas.append(p)
+
+# --- 3. Interfaz de Usuario (Dentro de VPython) ---
+scene.append_to_caption("\n\n")
+
+# Texto de Estado
+t_estado = wtext(text="Estado: <b>Líquido</b> (20 °C)")
+scene.append_to_caption("\n\n")
+
+# Función que se ejecuta al mover el slider
+def ajustar_temp():
+    global velocidad_base, estado
+    temp = s_temp.value
+    
+    txt_estado = "Líquido"
+    
+    if temp < 0:
+        estado = "solido"
+        txt_estado = "Sólido"
+        velocidad_base = 0.5
+        col = color.blue
+    elif temp >= 100:
+        estado = "gaseoso"
+        txt_estado = "Gaseoso"
+        velocidad_base = 5.0
+        col = color.red
+    else:
+        estado = "liquido"
+        velocidad_base = 1.5
+        col = vec(0, 0.53, 0.78)
+
+    t_estado.text = "Estado: <b>" + txt_estado + "</b> (" + str(temp) + " °C)"
+    
+    # Cambiar color de particulas
+    for p in particulas:
+        p.color = col
+
+# Slider
+scene.append_to_caption("Temperatura:  Frío ")
+s_temp = slider(min=-20, max=120, value=20, length=350, bind=ajustar_temp)
+scene.append_to_caption(" Caliente\n\n")
+scene.append_to_caption("<i>Tip: Hacé click y arrastrá en la caja para rotar la vista 3D.</i>")
+
+# --- 4. Bucle de Animación (Física) ---
+dt = 0.01
+
+while True:
+    rate(60) # 60 FPS
+    
+    for p in particulas:
+        
+        # --- Lógica ESTADO SÓLIDO (Vibración) ---
+        if estado == "solido":
+            # En solido, las particulas quieren volver a su "home" pero vibran
+            fuerza = (p.home - p.pos) * 5 # Fuerza de resorte hacia su lugar
+            ruido = vec(random()-0.5, random()-0.5, random()-0.5) * 5
+            p.v = fuerza + ruido
+            p.pos = p.pos + p.v * dt * 0.1 # Se mueven muy poco
+            
+        # --- Lógica LÍQUIDO Y GASEOSO (Movimiento libre + Rebotes) ---
+        else:
+            # Normalizar velocidad para mantener velocidad constante segun temperatura
+            if mag(p.v) > 0:
+                p.v = norm(p.v) * velocidad_base
+            
+            p.pos = p.pos + p.v * dt
+
+            # Rebotes en las 6 paredes (X, Y, Z)
+            # Eje X
+            if p.pos.x > limite:
+                p.pos.x = limite
+                p.v.x = -p.v.x
+            elif p.pos.x < -limite:
+                p.pos.x = -limite
+                p.v.x = -p.v.x
+            
+            # Eje Y
+            if p.pos.y > limite:
+                p.pos.y = limite
+                p.v.y = -p.v.y
+            elif p.pos.y < -limite:
+                p.pos.y = -limite
+                p.v.y = -p.v.y
+                
+            # Eje Z (Profundidad)
+            if p.pos.z > limite:
+                p.pos.z = limite
+                p.v.z = -p.v.z
+            elif p.pos.z < -limite:
+                p.pos.z = -limite
+                p.v.z = -p.v.z
+</script>
 
 <script type="text/javascript">
-async function main() {
-
-  let escena = canvas({
-    width: window.innerWidth,
-    height: window.innerHeight - 80,
-    background: color.white,
-    center: vector(0,0,0),
-    forward: vector(-1,-1,-1)
-  });
-
-  escena.userspin = true;
-  escena.userzoom = true;
-  escena.userpan = true;
-
-  let particulas = [];
-
-  function crearParticulas(estado) {
-    for (let p of particulas) p.visible = false;
-    particulas = [];
-
-    let velocidad = 0.3;
-    let dispersion = 2;
-
-    if (estado === "solido") {
-      velocidad = 0.05;
-      dispersion = 1;
+// Código necesario para iniciar el compilador de GlowScript en la página
+async function __main__() {
+    var element = document.getElementById("glowscript");
+    var main = window.__glowscript_main__; // Variable interna de la librería
+    if (main) {
+        await main(element);
+    } else {
+        console.error("GlowScript no se cargó correctamente.");
     }
-    if (estado === "liquido") {
-      velocidad = 0.4;
-      dispersion = 2;
-    }
-    if (estado === "gaseoso") {
-      velocidad = 2;
-      dispersion = 6;
-    }
-
-    for (let i = 0; i < 40; i++) {
-      let p = sphere({
-        pos: vector(
-          (Math.random()-0.5)*dispersion,
-          (Math.random()-0.5)*dispersion,
-          (Math.random()-0.5)*dispersion
-        ),
-        radius: 0.25,
-        color: color.cyan
-      });
-
-      p.vel = vector(
-        (Math.random()-0.5)*velocidad,
-        (Math.random()-0.5)*velocidad,
-        (Math.random()-0.5)*velocidad
-      );
-
-      particulas.push(p);
-    }
-  }
-
-  function actualizar() {
-    let t = document.getElementById("temp").value;
-    document.getElementById("tempValor").innerText = t;
-
-    let estado = "liquido";
-    if (t < 0) estado = "solido";
-    if (t >= 100) estado = "gaseoso";
-
-    document.getElementById("estadoTexto").innerText =
-      estado.charAt(0).toUpperCase() + estado.slice(1);
-
-    crearParticulas(estado);
-  }
-
-  document.getElementById("temp").oninput = actualizar;
-
-  actualizar();
-
-  while (true) {
-    rate(60);
-    for (let p of particulas) {
-      p.pos = p.pos.add(p.vel);
-
-      if (Math.abs(p.pos.x) > 5) p.vel.x *= -1;
-      if (Math.abs(p.pos.y) > 5) p.vel.y *= -1;
-      if (Math.abs(p.pos.z) > 5) p.vel.z *= -1;
-    }
-  }
 }
-
-main();
+__main__();
 </script>
 
 </body>
