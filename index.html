@@ -7,35 +7,22 @@
 
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f4f4;
+            font-family: sans-serif;
+            background: #f4f4f4;
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin: 0;
             padding: 20px;
         }
-
-        h1 { color: #5A2382; margin-bottom: 5px; text-align: center; }
-        
+        h1 { color: #5A2382; }
         .instrucciones {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-            text-align: center;
-            max-width: 600px;
+            background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;
         }
-
-        /* El contenedor debe tener tamaño definido */
         #glowscript {
-            width: 640px;
-            height: 480px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            overflow: hidden; 
+            width: 640px; height: 480px; background: white;
+            border-radius: 8px; overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
     </style>
 
@@ -45,185 +32,155 @@
     <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery-ui.custom.min.js"></script>
     <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/package/glow.3.2.min.js"></script>
-
 </head>
 
 <body>
 
-    <h1>Modelo Molecular: Estados de la Materia</h1>
-    
-    <div class="instrucciones">
-        Utilizá el deslizador para cambiar la temperatura.<br>
-        <b>Azul (Sólido):</b> Vibran en su lugar. <b>Celeste (Líquido):</b> Fluyen. <b>Rojo (Gas):</b> Vuelan libres.
-    </div>
+    <h1>Estados de la materia (3D)</h1>
+    <div class="instrucciones">Mové el deslizador para cambiar la temperatura.</div>
 
     <div id="glowscript"></div>
 
     <script type="text/javascript">
+    
+    // Configuración para que GlowScript sepa dónde dibujarse
+    window.__context = { glowscript_container: $("#glowscript") };
+
+    // Función principal asíncrona (Obligatorio en GlowScript)
+    async function __main__() {
+        "use strict";
+
+        // 1. ESCENA
+        var scene = canvas();
+        scene.width = 640;
+        scene.height = 480;
+        scene.background = color.white;
+        scene.range = 12;
+        scene.userspin = true;
+        scene.userzoom = false;
+        scene.caption = "\n"; // Espacio para slider
+
+        // 2. OBJETOS
+        // Caja contenedora
+        var contenedor = box({pos: vec(0,0,0), size: vec(20,20,20), opacity: 0.1, color: color.black});
+        var pared = 9.4;
+
+        // 3. VARIABLES
+        var particulas = [];
+        var estado = "liquido";
+        var velocidad_base = 1.0;
+        var N_lado = 4; // Cantidad
+
+        // 4. CREAR PARTÍCULAS
+        var separacion = 4.0;
+        var offset = 6.0;
+
+        for (var x=0; x<N_lado; x++) {
+            for (var y=0; y<N_lado; y++) {
+                for (var z=0; z<N_lado; z++) {
+                    
+                    var px = x*separacion - offset;
+                    var py = y*separacion - offset;
+                    var pz = z*separacion - offset;
+                    var pos_inicial = vec(px, py, pz);
+
+                    var p = sphere({
+                        pos: pos_inicial,
+                        radius: 0.6,
+                        color: vec(0, 0.6, 1),
+                        shininess: 0.5
+                    });
+
+                    // Física
+                    p.v = vec(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5);
+                    p.home = pos_inicial; 
+
+                    particulas.push(p);
+                }
+            }
+        }
+
+        // 5. INTERFAZ (SLIDER)
+        var label_estado = wtext({text: "Estado: <b>Líquido</b> (20 °C)"});
+        scene.append_to_caption("\n\n");
+
+        function set_temp(s) {
+            var t = s.value;
+            var col;
+            if (t < 0) {
+                estado = "solido";
+                velocidad_base = 0.5;
+                col = color.blue;
+                label_estado.text = "Estado: <b>Sólido</b> (" + t + " °C)";
+            } else if (t >= 100) {
+                estado = "gaseoso";
+                velocidad_base = 6.0;
+                col = color.red;
+                label_estado.text = "Estado: <b>Gaseoso</b> (" + t + " °C)";
+            } else {
+                estado = "liquido";
+                velocidad_base = 1.5;
+                col = vec(0, 0.6, 1);
+                label_estado.text = "Estado: <b>Líquido</b> (" + t + " °C)";
+            }
+            // Actualizar colores
+            for(var i=0; i<particulas.length; i++) particulas[i].color = col;
+        }
+
+        scene.append_to_caption("Frío  ");
+        slider({min: -20, max: 120, value: 20, length: 300, bind: set_temp});
+        scene.append_to_caption("  Caliente");
+
+
+        // 6. BUCLE DE ANIMACIÓN
+        var dt = 0.01;
         
-        // Función principal que GlowScript busca automáticamente
-        window.__glowscript_main__ = async function(context) {
-            
-            // 1. Configuración de la Escena
-            var scene = canvas({
-                width: 640,
-                height: 480,
-                background: color.white,
-                container: context, // ESTO ASEGURA QUE SE DIBUJE EN EL DIV
-                resizable: false
-            });
-            
-            scene.range = 12;
-            scene.userzoom = false;
-            scene.userspin = true;
-            scene.caption = "\n"; // Espacio para controles
+        while (true) {
+            await rate(60); // 60 FPS
 
-            // 2. Objetos Estáticos
-            // Caja contenedora (Wireframe)
-            box({
-                pos: vec(0,0,0), 
-                size: vec(20, 20, 20), 
-                color: color.black, 
-                opacity: 0.1
-            });
-            
-            var pared = 9.4; // Límite para rebotes
+            for (var i=0; i<particulas.length; i++) {
+                var p = particulas[i];
 
-            // 3. Variables del Sistema
-            var particulas = [];
-            var estado = "liquido";
-            var velocidad_base = 1.0;
-            var N_lado = 4; // 4x4x4 = 64 partículas
+                if (estado === "solido") {
+                    // --- SÓLIDO (VIBRACIÓN) ---
+                    // En JS GlowScript usamos .sub() para restar vectores y .multiply() para multiplicar
+                    var dist = p.home.sub(p.pos); // Vector distancia a casa
+                    var fuerza = dist.multiply(10); // Fuerza resorte
+                    
+                    var random_force = vec(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).multiply(3);
+                    
+                    p.v = fuerza.add(random_force);
+                    
+                    // p.pos = p.pos + p.v * dt * 0.1
+                    p.pos = p.pos.add(p.v.multiply(dt * 0.1));
 
-            // 4. Creación de Partículas
-            var separacion = 4.0;
-            var offset = 6.0;
-
-            for(var x=0; x<N_lado; x++) {
-                for(var y=0; y<N_lado; y++) {
-                    for(var z=0; z<N_lado; z++) {
-                        
-                        var px = x*separacion - offset;
-                        var py = y*separacion - offset;
-                        var pz = z*separacion - offset;
-                        var pos_inicial = vec(px, py, pz);
-
-                        var p = sphere({
-                            pos: pos_inicial,
-                            radius: 0.6,
-                            color: vec(0, 0.6, 1),
-                            shininess: 0.5
-                        });
-
-                        // Propiedades físicas personalizadas
-                        p.vx = (Math.random() - 0.5);
-                        p.vy = (Math.random() - 0.5);
-                        p.vz = (Math.random() - 0.5);
-                        p.home = pos_inicial; // Guardar posición original
-
-                        particulas.push(p);
-                    }
-                }
-            }
-
-            // 5. Controles (UI)
-            var label_estado = wtext({text: "Estado: <b>Líquido</b> (20 °C)"});
-            scene.append_to_caption("\n\n");
-
-            // Función para el slider
-            function controlar_temp(s) {
-                var t = s.value;
-                var col;
-
-                if (t < 0) {
-                    estado = "solido";
-                    velocidad_base = 0.5;
-                    col = color.blue;
-                    label_estado.text = "Estado: <b>Sólido</b> (" + t + " °C)";
-                } else if (t >= 100) {
-                    estado = "gaseoso";
-                    velocidad_base = 6.0;
-                    col = color.red;
-                    label_estado.text = "Estado: <b>Gaseoso</b> (" + t + " °C)";
                 } else {
-                    estado = "liquido";
-                    velocidad_base = 1.5;
-                    col = vec(0, 0.6, 1);
-                    label_estado.text = "Estado: <b>Líquido</b> (" + t + " °C)";
-                }
-
-                // Actualizar colores
-                for(var i=0; i<particulas.length; i++) {
-                    particulas[i].color = col;
-                }
-            }
-
-            scene.append_to_caption("Frío  ");
-            slider({min: -20, max: 120, value: 20, length: 300, bind: controlar_temp});
-            scene.append_to_caption("  Caliente");
-
-            // 6. BUCLE DE ANIMACIÓN (Aquí ocurre la magia)
-            var dt = 0.01;
-            
-            while(true) {
-                await rate(60); // Esperar para mantener 60 FPS (CRUCIAL)
-
-                for(var i=0; i<particulas.length; i++) {
-                    var p = particulas[i];
-
-                    // --- LÓGICA SÓLIDO (Vibración) ---
-                    if(estado === "solido") {
-                        // Fuerza de retorno a su posición home
-                        var fx = (p.home.x - p.pos.x) * 10;
-                        var fy = (p.home.y - p.pos.y) * 10;
-                        var fz = (p.home.z - p.pos.z) * 10;
-
-                        // Agitación aleatoria
-                        p.vx = fx + (Math.random()-0.5) * 3;
-                        p.vy = fy + (Math.random()-0.5) * 3;
-                        p.vz = fz + (Math.random()-0.5) * 3;
-
-                        // Actualizar posición (Movimiento restringido)
-                        p.pos.x += p.vx * dt * 0.1;
-                        p.pos.y += p.vy * dt * 0.1;
-                        p.pos.z += p.vz * dt * 0.1;
-
-                    } 
-                    // --- LÓGICA LÍQUIDO / GAS (Libre) ---
-                    else {
-                        // Normalizar velocidad
-                        var velocidad_actual = Math.sqrt(p.vx*p.vx + p.vy*p.vy + p.vz*p.vz);
-                        if (velocidad_actual > 0) {
-                            p.vx = (p.vx / velocidad_actual) * velocidad_base;
-                            p.vy = (p.vy / velocidad_actual) * velocidad_base;
-                            p.vz = (p.vz / velocidad_actual) * velocidad_base;
-                        }
-
-                        // Mover
-                        p.pos.x += p.vx * dt;
-                        p.pos.y += p.vy * dt;
-                        p.pos.z += p.vz * dt;
-
-                        // Rebotes manuales (X)
-                        if (p.pos.x > pared) { p.pos.x = pared; p.vx *= -1; }
-                        else if (p.pos.x < -pared) { p.pos.x = -pared; p.vx *= -1; }
-
-                        // Rebotes manuales (Y)
-                        if (p.pos.y > pared) { p.pos.y = pared; p.vy *= -1; }
-                        else if (p.pos.y < -pared) { p.pos.y = -pared; p.vy *= -1; }
-
-                        // Rebotes manuales (Z)
-                        if (p.pos.z > pared) { p.pos.z = pared; p.vz *= -1; }
-                        else if (p.pos.z < -pared) { p.pos.z = -pared; p.vz *= -1; }
+                    // --- LÍQUIDO Y GAS ---
+                    
+                    // Termostato (Mantener velocidad)
+                    if (mag(p.v) > 0) {
+                        p.v = norm(p.v).multiply(velocidad_base);
                     }
+
+                    // Mover: pos = pos + (v * dt)
+                    p.pos = p.pos.add(p.v.multiply(dt));
+
+                    // Rebotes (Manuales por componente para evitar problemas de vectores)
+                    if (p.pos.x > pared) { p.pos.x = pared; p.v.x *= -1; }
+                    else if (p.pos.x < -pared) { p.pos.x = -pared; p.v.x *= -1; }
+
+                    if (p.pos.y > pared) { p.pos.y = pared; p.v.y *= -1; }
+                    else if (p.pos.y < -pared) { p.pos.y = -pared; p.v.y *= -1; }
+
+                    if (p.pos.z > pared) { p.pos.z = pared; p.v.z *= -1; }
+                    else if (p.pos.z < -pared) { p.pos.z = -pared; p.v.z *= -1; }
                 }
             }
-        };
+        }
+    }
 
-        // Inicializar GlowScript en el div correcto
-        $(function(){
-            window.__glowscript_main__($("#glowscript"));
-        });
+    // Arrancar
+    $(function(){ __main__() });
 
     </script>
 </body>
