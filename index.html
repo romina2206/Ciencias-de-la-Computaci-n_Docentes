@@ -2,25 +2,25 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Estados de la materia – Modelo molecular 3D</title>
+<title>Estados del agua – Modelo molecular 3D</title>
 
 <style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f7f7f7;
-  }
-  #panel {
-    padding: 10px;
-    background: #ffffff;
-    text-align: center;
-  }
-  #scene {
-    width: 600px;
-    height: 400px;
-    margin: auto;
-    border: 2px solid #ccc;
-  }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+}
+#panel {
+  background: white;
+  padding: 10px;
+  text-align: center;
+}
+#scene {
+  width: 600px;
+  height: 400px;
+  margin: auto;
+  border: 2px solid #ccc;
+}
 </style>
 </head>
 
@@ -28,10 +28,10 @@
 
 <div id="panel">
   Temperatura:
-  <span id="tempValor">20</span> °C
-  <input type="range" min="-10" max="120" value="20" id="temp">
+  <input type="range" id="temp" min="-20" max="120" value="20">
+  <span id="t">20</span> °C
   <br>
-  Estado: <strong><span id="estadoTexto">Líquido</span></strong>
+  Estado: <strong><span id="estado">Líquido</span></strong>
 </div>
 
 <div id="scene"></div>
@@ -46,101 +46,106 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf0f0f0);
 
 // CÁMARA
-const camera = new THREE.PerspectiveCamera(75, 600/400, 0.1, 1000);
-camera.position.z = 10;
+const camera = new THREE.PerspectiveCamera(75, 600/400, 0.1, 100);
+camera.position.z = 12;
 
 // RENDER
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(600, 400);
 container.appendChild(renderer.domElement);
 
 // LUZ
-const light = new THREE.PointLight(0xffffff, 1);
-light.position.set(10, 10, 10);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const light = new THREE.PointLight(0xffffff, 0.8);
+light.position.set(10,10,10);
 scene.add(light);
 
-// MOLÉCULAS
-let molecules = [];
-const boxSize = 4;
+// MOLÉCULAS (esferas = moléculas de agua)
+const molecules = [];
+const N = 30;
+const limits = 4;
 
-function crearMoleculas(estado) {
-  molecules.forEach(m => scene.remove(m.mesh));
-  molecules = [];
+// CREAR MOLÉCULAS (NO SE DESTRUYEN)
+for (let i=0; i<N; i++) {
+  const geo = new THREE.SphereGeometry(0.3, 16, 16);
+  const mat = new THREE.MeshStandardMaterial({color: 0x0087C8});
+  const m = new THREE.Mesh(geo, mat);
 
-  let velocidad = 0.1;
-  let dispersion = 2;
+  m.position.set(
+    (Math.random()-0.5)*3,
+    (Math.random()-0.5)*3,
+    (Math.random()-0.5)*3
+  );
 
-  if (estado === "solido") {
-    velocidad = 0.02;
-    dispersion = 1.5;
-  }
-  if (estado === "liquido") {
-    velocidad = 0.15;
-    dispersion = 2.5;
-  }
-  if (estado === "gaseoso") {
-    velocidad = 0.6;
-    dispersion = 4;
-  }
+  m.velocity = new THREE.Vector3();
+  m.home = m.position.clone(); // posición sólida
 
-  for (let i = 0; i < 40; i++) {
-    const geometry = new THREE.SphereGeometry(0.25, 16, 16);
-    const material = new THREE.MeshStandardMaterial({ color: 0x0087C8 });
-    const sphere = new THREE.Mesh(geometry, material);
-
-    sphere.position.set(
-      (Math.random() - 0.5) * dispersion,
-      (Math.random() - 0.5) * dispersion,
-      (Math.random() - 0.5) * dispersion
-    );
-
-    sphere.velocity = new THREE.Vector3(
-      (Math.random() - 0.5) * velocidad,
-      (Math.random() - 0.5) * velocidad,
-      (Math.random() - 0.5) * velocidad
-    );
-
-    molecules.push({ mesh: sphere });
-    scene.add(sphere);
-  }
+  molecules.push(m);
+  scene.add(m);
 }
 
-// TEMPERATURA
-function actualizar() {
-  const t = document.getElementById("temp").value;
-  document.getElementById("tempValor").innerText = t;
+// ESTADO
+let estado = "liquido";
 
-  let estado = "liquido";
-  if (t < 0) estado = "solido";
-  if (t >= 100) estado = "gaseoso";
+function actualizarEstado() {
+  const T = temp.value;
+  document.getElementById("t").innerText = T;
 
-  document.getElementById("estadoTexto").innerText =
+  if (T < 0) estado = "solido";
+  else if (T >= 100) estado = "gaseoso";
+  else estado = "liquido";
+
+  document.getElementById("estado").innerText =
     estado.charAt(0).toUpperCase() + estado.slice(1);
-
-  crearMoleculas(estado);
 }
 
-document.getElementById("temp").oninput = actualizar;
+temp.oninput = actualizarEstado;
 
 // ANIMACIÓN
 function animate() {
   requestAnimationFrame(animate);
 
   molecules.forEach(m => {
-    const p = m.mesh;
-    p.position.add(p.velocity);
 
-    ["x","y","z"].forEach(axis => {
-      if (Math.abs(p.position[axis]) > boxSize) {
-        p.velocity[axis] *= -1;
-      }
+    if (estado === "solido") {
+      // vibración alrededor del punto fijo
+      m.position.lerp(m.home, 0.1);
+      m.position.x += (Math.random()-0.5)*0.02;
+      m.position.y += (Math.random()-0.5)*0.02;
+      m.position.z += (Math.random()-0.5)*0.02;
+    }
+
+    if (estado === "liquido") {
+      // movimiento lento, cercano
+      m.velocity.add(new THREE.Vector3(
+        (Math.random()-0.5)*0.01,
+        (Math.random()-0.5)*0.01,
+        (Math.random()-0.5)*0.01
+      ));
+      m.position.add(m.velocity);
+      m.velocity.multiplyScalar(0.9);
+    }
+
+    if (estado === "gaseoso") {
+      // movimiento rápido y libre
+      m.velocity.add(new THREE.Vector3(
+        (Math.random()-0.5)*0.05,
+        (Math.random()-0.5)*0.05,
+        (Math.random()-0.5)*0.05
+      ));
+      m.position.add(m.velocity);
+    }
+
+    // límites
+    ["x","y","z"].forEach(a=>{
+      if (Math.abs(m.position[a]) > limits) m.velocity[a] *= -1;
     });
   });
 
   renderer.render(scene, camera);
 }
 
-actualizar();
+actualizarEstado();
 animate();
 </script>
 
