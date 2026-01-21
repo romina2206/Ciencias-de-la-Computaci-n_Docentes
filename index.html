@@ -1,190 +1,223 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Estados de la materia – Modelo molecular 3D</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f7f7f7;
-        padding: 20px;
-        text-align: center;
-    }
-    h1 { color: #5A2382; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estados de la Materia - Modelo 3D</title>
     
-    /* Contenedor para GlowScript */
-    #glowscript {
-        width: 100%;
-        max-width: 640px;
-        margin: 0 auto;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        background: white;
-    }
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-    /* Estilos para los controles generados por VPython */
-    .ui-slider { background: #ddd; }
-    .ui-slider-handle { background: #E6500F !important; }
-</style>
+        h1 { color: #5A2382; margin-bottom: 10px; }
+        
+        /* Contenedor principal de la simulación */
+        #glowscript {
+            width: 640px;
+            height: 480px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden; /* Importante para que no se salga el canvas */
+        }
 
-<link type="text/css" href="https://s3.amazonaws.com/glowscript/css/redmond/2.1/jquery-ui.custom.css" rel="stylesheet" />
-<link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css" />
-<script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery.min.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery-ui.custom.min.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/glowscript/package/glow.3.2.min.js"></script>
+        .instrucciones {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+    </style>
 
+    <link type="text/css" href="https://s3.amazonaws.com/glowscript/css/redmond/2.1/jquery-ui.custom.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css" />
+    
+    <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery-ui.custom.min.js"></script>
+    
+    <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/package/glow.3.2.min.js"></script>
+    <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/package/RSrun.3.2.min.js"></script>
 </head>
 
 <body>
 
-<h1>Estados de la materia (3D)</h1>
+    <h1>Modelo Molecular: Estados de la Materia</h1>
 
-<div id="glowscript" class="glowscript"></div>
+    <div class="instrucciones">
+        <p>Utilizá el deslizador para cambiar la temperatura.<br>
+        Observá cómo cambian el <b>orden</b> y el <b>movimiento</b> de las partículas.</p>
+    </div>
 
-<script type="text/vpython">
+    <div id="glowscript"></div>
+
+    <script type="text/vpython">
 GlowScript 3.2 VPython
 
-# --- 1. Configuración de la Escena ---
-scene.bind('keydown', lambda evt: None) # Evitar scroll con teclas
-scene.width = 600
-scene.height = 450
+# --- Configuración del Escenario ---
+scene.bind('keydown', lambda evt: None) # Bloquear comandos de teclado default
 scene.background = color.white
-scene.userzoom = False 
-scene.userspin = True  # Permitir rotar la caja con el mouse
+scene.width = 640
+scene.height = 480
 scene.range = 12
+scene.userzoom = False # Zoom fijo para mantener escala
+scene.userspin = True  # Permitir rotar
 
-# Caja contenedora (Wireframe) para ver el volumen
-caja = box(pos=vec(0,0,0), size=vec(20, 20, 20), color=color.black, opacity=0.1)
-# Paredes invisibles para colisiones (tamaño caja / 2 - radio partícula)
-limite = 9.5 
+# --- Objetos Estáticos ---
+# Caja contenedora (Wireframe)
+contenedor = box(pos=vec(0,0,0), size=vec(20, 20, 20), color=color.black, opacity=0.1)
+pared = 9.4 # Límite de rebote
 
-# --- 2. Variables y Partículas ---
-N = 60  # Cantidad de partículas
+# --- Variables Globales ---
+N_lado = 4 # 4x4x4 = 64 partículas
 particulas = []
-velocidad_base = 1
-estado = "liquido"
+estado_actual = "liquido"
+velocidad_base = 1.0
 
-# Creamos las esferas
-for i in range(N):
-    # Posición aleatoria inicial
-    x = random() * 18 - 9
-    y = random() * 18 - 9
-    z = random() * 18 - 9
-    
-    # Creamos la esfera
-    p = sphere(pos=vec(x,y,z), radius=0.4, color=vec(0, 0.53, 0.78))
-    
-    # Propiedades físicas personalizadas
-    p.v = vec(random()-0.5, random()-0.5, random()-0.5) # Velocidad
-    p.home = vec(x,y,z) # Posición "hogar" para el estado sólido
-    
-    particulas.append(p)
+# --- Creación de Partículas ---
+# Las creamos en una grilla perfecta (ideal para mostrar el sólido al inicio)
+separacion = 4.5
+offset = 6.75 
 
-# --- 3. Interfaz de Usuario (Dentro de VPython) ---
+for x in range(N_lado):
+    for y in range(N_lado):
+        for z in range(N_lado):
+            # Posición inicial ordenada
+            p_pos = vec(x*separacion - offset, y*separacion - offset, z*separacion - offset)
+            
+            # Crear esfera
+            p = sphere(pos=p_pos, radius=0.7)
+            p.color = vec(0, 0.6, 1) # Azul base
+            p.shininess = 0.6
+            
+            # Propiedades físicas
+            p.v = vec(random()-0.5, random()-0.5, random()-0.5) # Velocidad aleatoria
+            p.home = p_pos # Guardamos su "lugar" en la red cristalina (para el sólido)
+            
+            particulas.append(p)
+
+# --- Interfaz de Usuario (UI) ---
+scene.append_to_caption("\n")
+
+# Texto de estado
+texto_estado = wtext(text="Estado: <b>Líquido</b> (20 °C)")
+
 scene.append_to_caption("\n\n")
 
-# Texto de Estado
-t_estado = wtext(text="Estado: <b>Líquido</b> (20 °C)")
-scene.append_to_caption("\n\n")
-
-# Función que se ejecuta al mover el slider
-def ajustar_temp():
-    global velocidad_base, estado
-    temp = s_temp.value
+# Función de control
+def cambiar_temperatura():
+    global velocidad_base, estado_actual
+    t = slider_temp.value
     
-    txt_estado = "Líquido"
+    estado_str = "Líquido"
+    col = vec(0, 0.6, 1) # Azul medio
     
-    if temp < 0:
-        estado = "solido"
-        txt_estado = "Sólido"
+    if t < 0:
+        estado_actual = "solido"
+        estado_str = "Sólido"
         velocidad_base = 0.5
-        col = color.blue
-    elif temp >= 100:
-        estado = "gaseoso"
-        txt_estado = "Gaseoso"
-        velocidad_base = 5.0
-        col = color.red
+        col = color.blue # Azul oscuro
+        
+    elif t >= 100:
+        estado_actual = "gaseoso"
+        estado_str = "Gaseoso"
+        velocidad_base = 8.0
+        col = color.red # Rojo
+        
     else:
-        estado = "liquido"
-        velocidad_base = 1.5
-        col = vec(0, 0.53, 0.78)
+        estado_actual = "liquido"
+        velocidad_base = 2.0
+        col = vec(0, 0.6, 1)
 
-    t_estado.text = "Estado: <b>" + txt_estado + "</b> (" + str(temp) + " °C)"
-    
-    # Cambiar color de particulas
+    # Actualizar texto y colores
+    texto_estado.text = "Estado: <b>" + estado_str + "</b> (" + str(t) + " °C)"
     for p in particulas:
         p.color = col
 
 # Slider
-scene.append_to_caption("Temperatura:  Frío ")
-s_temp = slider(min=-20, max=120, value=20, length=350, bind=ajustar_temp)
-scene.append_to_caption(" Caliente\n\n")
-scene.append_to_caption("<i>Tip: Hacé click y arrastrá en la caja para rotar la vista 3D.</i>")
+scene.append_to_caption("Frío  ")
+slider_temp = slider(min=-20, max=120, value=20, length=300, bind=cambiar_temperatura)
+scene.append_to_caption("  Caliente\n")
 
-# --- 4. Bucle de Animación (Física) ---
+# --- Bucle de Física (Animación) ---
 dt = 0.01
 
 while True:
-    rate(60) # 60 FPS
+    rate(60) # 60 cuadros por segundo
     
     for p in particulas:
         
-        # --- Lógica ESTADO SÓLIDO (Vibración) ---
-        if estado == "solido":
-            # En solido, las particulas quieren volver a su "home" pero vibran
-            fuerza = (p.home - p.pos) * 5 # Fuerza de resorte hacia su lugar
-            ruido = vec(random()-0.5, random()-0.5, random()-0.5) * 5
-            p.v = fuerza + ruido
-            p.pos = p.pos + p.v * dt * 0.1 # Se mueven muy poco
+        # --- COMPORTAMIENTO SÓLIDO ---
+        # Las partículas vibran alrededor de su posición fija (p.home)
+        if estado_actual == "solido":
+            # Fuerza de resorte hacia su hogar
+            fuerza_retorno = (p.home - p.pos) * 8
+            # Agitación térmica (vibración)
+            agitacion = vec(random()-0.5, random()-0.5, random()-0.5) * 3
             
-        # --- Lógica LÍQUIDO Y GASEOSO (Movimiento libre + Rebotes) ---
+            p.v = fuerza_retorno + agitacion
+            p.pos = p.pos + p.v * dt * 0.1 # Movimiento restringido
+            
+        # --- COMPORTAMIENTO LÍQUIDO Y GAS ---
+        # Se mueven libremente y rebotan
         else:
-            # Normalizar velocidad para mantener velocidad constante segun temperatura
+            # Control de velocidad constante (termostato)
             if mag(p.v) > 0:
                 p.v = norm(p.v) * velocidad_base
             
+            # Mover
             p.pos = p.pos + p.v * dt
-
-            # Rebotes en las 6 paredes (X, Y, Z)
-            # Eje X
-            if p.pos.x > limite:
-                p.pos.x = limite
-                p.v.x = -p.v.x
-            elif p.pos.x < -limite:
-                p.pos.x = -limite
-                p.v.x = -p.v.x
             
-            # Eje Y
-            if p.pos.y > limite:
-                p.pos.y = limite
-                p.v.y = -p.v.y
-            elif p.pos.y < -limite:
-                p.pos.y = -limite
-                p.v.y = -p.v.y
+            # Rebotes en paredes (Caja cúbica)
+            # Eje X
+            if p.pos.x > pared:
+                p.pos.x = pared
+                p.v.x *= -1
+            elif p.pos.x < -pared:
+                p.pos.x = -pared
+                p.v.x *= -1
                 
-            # Eje Z (Profundidad)
-            if p.pos.z > limite:
-                p.pos.z = limite
-                p.v.z = -p.v.z
-            elif p.pos.z < -limite:
-                p.pos.z = -limite
-                p.v.z = -p.v.z
-</script>
+            # Eje Y
+            if p.pos.y > pared:
+                p.pos.y = pared
+                p.v.y *= -1
+            elif p.pos.y < -pared:
+                p.pos.y = -pared
+                p.v.y *= -1
+                
+            # Eje Z
+            if p.pos.z > pared:
+                p.pos.z = pared
+                p.v.z *= -1
+            elif p.pos.z < -pared:
+                p.pos.z = -pared
+                p.v.z *= -1
+    </script>
 
-<script type="text/javascript">
-// Código necesario para iniciar el compilador de GlowScript en la página
-async function __main__() {
-    var element = document.getElementById("glowscript");
-    var main = window.__glowscript_main__; // Variable interna de la librería
-    if (main) {
-        await main(element);
-    } else {
-        console.error("GlowScript no se cargó correctamente.");
-    }
-}
-__main__();
-</script>
-
+    <script type="text/javascript">
+        async function __main__() {
+            try {
+                var element = document.getElementById("glowscript");
+                var main = window.__glowscript_main__;
+                if(main) {
+                    await main(element);
+                } else {
+                    console.error("No se encontró la función principal de GlowScript.");
+                }
+            } catch (err) {
+                console.error("Error al iniciar GlowScript:", err);
+            }
+        }
+        __main__();
+    </script>
 </body>
 </html>
