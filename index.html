@@ -107,40 +107,44 @@ function animate() {
 
   molecules.forEach(m => {
 
-    if (estado === "solido") {
-      // vibración alrededor del punto fijo
-      m.position.lerp(m.home, 0.1);
-      m.position.x += (Math.random()-0.5)*0.02;
-      m.position.y += (Math.random()-0.5)*0.02;
-      m.position.z += (Math.random()-0.5)*0.02;
-    }
+  if (estado === "solido") {
+    // 🔒 SOLO vibran en el lugar
+    m.position.x = m.home.x + (Math.random()-0.5)*0.05;
+    m.position.y = m.home.y + (Math.random()-0.5)*0.05;
+    m.position.z = m.home.z + (Math.random()-0.5)*0.05;
 
-    if (estado === "liquido") {
-      // movimiento lento, cercano
-      m.velocity.add(new THREE.Vector3(
-        (Math.random()-0.5)*0.01,
-        (Math.random()-0.5)*0.01,
-        (Math.random()-0.5)*0.01
-      ));
-      m.position.add(m.velocity);
-      m.velocity.multiplyScalar(0.9);
-    }
+    m.velocity.set(0,0,0); // ❗ NO traslación
+  }
 
-    if (estado === "gaseoso") {
-      // movimiento rápido y libre
-      m.velocity.add(new THREE.Vector3(
-        (Math.random()-0.5)*0.05,
-        (Math.random()-0.5)*0.05,
-        (Math.random()-0.5)*0.05
-      ));
-      m.position.add(m.velocity);
-    }
+  if (estado === "liquido") {
+    // 💧 Movimiento lento y cercano
+    m.velocity.add(new THREE.Vector3(
+      (Math.random()-0.5)*0.005,
+      (Math.random()-0.5)*0.005,
+      (Math.random()-0.5)*0.005
+    ));
 
-    // límites
-    ["x","y","z"].forEach(a=>{
-      if (Math.abs(m.position[a]) > limits) m.velocity[a] *= -1;
-    });
+    m.velocity.multiplyScalar(0.85); // mucho rozamiento
+    m.position.add(m.velocity);
+  }
+
+  if (estado === "gaseoso") {
+    // 💨 Movimiento rápido
+    m.velocity.add(new THREE.Vector3(
+      (Math.random()-0.5)*0.05,
+      (Math.random()-0.5)*0.05,
+      (Math.random()-0.5)*0.05
+    ));
+
+    m.position.add(m.velocity);
+  }
+
+  // paredes
+  ["x","y","z"].forEach(a=>{
+    if (Math.abs(m.position[a]) > limits) m.velocity[a] *= -1;
   });
+
+
 
   renderer.render(scene, camera);
 }
