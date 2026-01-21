@@ -2,101 +2,90 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Estados de la materia – Modelo molecular (3D)</title>
+<title>Estados de la materia – 3D real</title>
 
 <script src="https://www.glowscript.org/lib/glow.3.2.min.js"></script>
 <script src="https://www.glowscript.org/lib/RSrun.3.2.min.js"></script>
 
 <style>
 body {
+  margin: 0;
   font-family: Arial, sans-serif;
-  background: #f7f7f7;
-  padding: 20px;
 }
-
-h1 { color: #5A2382; }
-h2 { color: #0087C8; }
-
-.box {
-  background: white;
-  padding: 15px;
-  border-radius: 8px;
-  margin-top: 15px;
+#ui {
+  padding: 10px;
+  background: #f7f7f7;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Estados de la materia</h1>
-
-<div class="box">
-<h2>Consigna</h2>
-<p>
-Mové la temperatura y observá:<br>
-<b>¿Qué tan juntas están las partículas?</b><br>
-<b>¿Cómo cambia su movimiento?</b>
-</p>
-</div>
-
-<div class="box">
+<div id="ui">
 Temperatura:
-<span id="tempValor">20</span> °C<br>
+<span id="tempValor">20</span> °C
 <input type="range" min="-10" max="120" value="20" id="temp">
-</div>
-
-<div class="box">
-<strong>Estado:</strong> <span id="estadoTexto">Líquido</span>
+<br>
+Estado: <strong><span id="estadoTexto">Líquido</span></strong>
 </div>
 
 <script type="text/javascript">
-let escena;
 let particulas = [];
+let escena;
 
-function iniciarEscena() {
+function iniciar() {
   escena = canvas({
-    width: 500,
-    height: 400,
-    background: color.white
+    width: window.innerWidth,
+    height: window.innerHeight - 80,
+    background: color.white,
+    center: vector(0,0,0),
+    forward: vector(-1,-1,-1) // CLAVE para 3D
   });
+
+  escena.userspin = true;   // mouse rota
+  escena.userzoom = true;   // zoom
+  escena.userpan = true;    // mover cámara
+
+  actualizar();
+  animar();
 }
 
 function crearParticulas(estado) {
-  // borrar anteriores
   for (let p of particulas) p.visible = false;
   particulas = [];
 
-  let velocidad = 0.5;
-  let separacion = 1.2;
+  let velocidad = 0.3;
+  let dispersion = 2;
 
   if (estado === "solido") {
-    velocidad = 0.1;
-    separacion = 0.8;
+    velocidad = 0.05;
+    dispersion = 1;
   }
   if (estado === "liquido") {
-    velocidad = 0.5;
-    separacion = 1.2;
+    velocidad = 0.4;
+    dispersion = 2;
   }
   if (estado === "gaseoso") {
     velocidad = 2;
-    separacion = 2.5;
+    dispersion = 6;
   }
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 40; i++) {
     let p = sphere({
       pos: vector(
-        (Math.random() - 0.5) * separacion * 5,
-        (Math.random() - 0.5) * separacion * 5,
-        (Math.random() - 0.5) * separacion * 5
+        (Math.random()-0.5)*dispersion,
+        (Math.random()-0.5)*dispersion,
+        (Math.random()-0.5)*dispersion
       ),
-      radius: 0.3,
-      color: color.cyan
+      radius: 0.25,
+      color: color.cyan,
+      make_trail: false
     });
 
     p.vel = vector(
-      (Math.random() - 0.5) * velocidad,
-      (Math.random() - 0.5) * velocidad,
-      (Math.random() - 0.5) * velocidad
+      (Math.random()-0.5)*velocidad,
+      (Math.random()-0.5)*velocidad,
+      (Math.random()-0.5)*velocidad
     );
 
     particulas.push(p);
@@ -104,7 +93,7 @@ function crearParticulas(estado) {
 }
 
 function actualizar() {
-  const t = document.getElementById("temp").value;
+  let t = document.getElementById("temp").value;
   document.getElementById("tempValor").innerText = t;
 
   let estado = "liquido";
@@ -126,13 +115,11 @@ function animar() {
     if (Math.abs(p.pos.y) > 5) p.vel.y *= -1;
     if (Math.abs(p.pos.z) > 5) p.vel.z *= -1;
   }
+  requestAnimationFrame(animar);
 }
 
-iniciarEscena();
-actualizar();
-setInterval(animar, 16);
-
 document.getElementById("temp").oninput = actualizar;
+iniciar();
 </script>
 
 </body>
