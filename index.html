@@ -2,15 +2,15 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Estados de la Materia - Modelo 3D</title>
     
     <link type="text/css" href="https://s3.amazonaws.com/glowscript/css/redmond/2.1/jquery-ui.custom.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css" />
-    
     <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery-ui.custom.min.js"></script>
     <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/package/glow.3.2.min.js"></script>
+    <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/package/RSrun.3.2.min.js"></script>
 
     <style>
         body {
@@ -23,179 +23,191 @@
             padding: 20px;
         }
         h1 { color: #5A2382; margin-bottom: 5px; }
-        .instrucciones { margin-bottom: 20px; color: #555; font-size: 0.9em; }
+        .instrucciones { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px; 
+            text-align: center;
+        }
         
-        /* Contenedor del Canvas 3D */
+        /* Contenedor ESPECÍFICO para el canvas 3D */
         #glowscript {
             width: 640px; 
             height: 480px;
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            overflow: hidden;
+            overflow: hidden; /* Importante */
         }
     </style>
 </head>
 
 <body>
 
-    <h1>Estados de la materia (3D)</h1>
-    <div class="instrucciones">Mové el deslizador para calentar o enfriar las partículas.</div>
+    <h1>Modelo Molecular: Estados de la Materia</h1>
+    
+    <div class="instrucciones">
+        Utilizá el deslizador para cambiar la temperatura.<br>
+        Observá cómo cambian el <b>orden</b> y el <b>movimiento</b>.
+    </div>
 
     <div id="glowscript"></div>
 
-    <script type="text/javascript">
+    <script type="text/vpython">
+GlowScript 3.2 VPython
+
+# --- Configuración Visual ---
+scene.bind('keydown', lambda evt: None) # Evita scroll con teclado
+scene.background = color.white
+scene.width = 640
+scene.height = 480
+scene.range = 12
+scene.userzoom = False 
+scene.userspin = True 
+
+# --- Caja Contenedora ---
+# Wireframe para ver el volumen
+contenedor = box(pos=vec(0,0,0), size=vec(20, 20, 20), color=color.black, opacity=0.1)
+pared = 9.4 
+
+# --- Variables ---
+particulas = []
+velocidad_base = 1.0
+estado = "liquido"
+
+# --- Crear Partículas (Cubo 4x4x4) ---
+# Las creamos ordenadas para que se vea bien el estado sólido al inicio
+separacion = 4.0
+offset = 6.0 
+
+for x in range(4):
+    for y in range(4):
+        for z in range(4):
+            pos_inicial = vec(x*separacion - offset, y*separacion - offset, z*separacion - offset)
+            
+            p = sphere(pos=pos_inicial, radius=0.6)
+            p.color = vec(0, 0.6, 1) # Azul claro
+            p.shininess = 0.5
+            
+            # Física
+            p.v = vec(random()-0.5, random()-0.5, random()-0.5) 
+            p.home = pos_inicial # Posición "hogar" para sólido
+            
+            particulas.append(p)
+
+# --- Interfaz (Slider y Texto) ---
+scene.append_to_caption("\n")
+wtext_estado = wtext(text="Estado: <b>Líquido</b> (20 °C)")
+scene.append_to_caption("\n\n")
+
+def cambiar_temp():
+    global velocidad_base, estado
+    t = slider_temp.value
+    
+    txt = "Líquido"
+    col = vec(0, 0.6, 1)
+    
+    if t < 0:
+        estado = "solido"
+        txt = "Sólido"
+        velocidad_base = 0.5
+        col = color.blue
+    elif t >= 100:
+        estado = "gaseoso"
+        txt = "Gaseoso"
+        velocidad_base = 6.0
+        col = color.red
+    else:
+        estado = "liquido"
+        velocidad_base = 1.5
+        col = vec(0, 0.6, 1)
         
-        // Esta función arranca todo cuando la página carga
-        window.__glowscript_main__ = async function(context) {
-            
-            // --- Configuración Inicial ---
-            var scene = canvas({
-                width: 640, 
-                height: 480, 
-                background: color.white,
-                container: context, // Se dibuja dentro del div #glowscript
-                resizable: false
-            });
-            
-            scene.range = 12;
-            scene.userzoom = false;
-            
-            // Título dentro del canvas
-            scene.caption = "\n"; 
-            
-            // --- Objetos ---
-            // Caja contenedora (Wireframe)
-            var contenedor = box({
-                pos: vec(0,0,0), 
-                size: vec(20, 20, 20), 
-                color: color.black, 
-                opacity: 0.1
-            });
-            
-            var limite = 9.4; // Paredes
+    wtext_estado.text = "Estado: <b>" + txt + "</b> (" + str(t) + " °C)"
+    
+    for p in particulas:
+        p.color = col
 
-            // --- Variables ---
-            var particulas = [];
-            var estado_actual = "liquido";
-            var velocidad_base = 1.0;
-            var N_lado = 4; // 4x4x4 = 64 partículas
+scene.append_to_caption("Frío  ")
+slider_temp = slider(min=-20, max=120, value=20, length=300, bind=cambiar_temp)
+scene.append_to_caption("  Caliente")
+
+# --- BUCLE DE ANIMACIÓN ---
+dt = 0.01
+
+while True:
+    rate(60)
+    
+    for p in particulas:
+        
+        # LÓGICA SÓLIDO (Vibración)
+        if estado == "solido":
+            # Fuerza que la tira a su lugar original
+            fuerza = (p.home - p.pos) * 10 
+            # Pequeña vibración aleatoria
+            vibracion = vec(random()-0.5, random()-0.5, random()-0.5) * 3
             
-            // --- Creación de Partículas ---
-            var separacion = 4.5;
-            var offset = 6.75;
-
-            for (var x = 0; x < N_lado; x++) {
-                for (var y = 0; y < N_lado; y++) {
-                    for (var z = 0; y < N_lado; z++) {
-                        if (z >= N_lado) break; // corrección bucle simple
-
-                        var pos_inicial = vec(x*separacion - offset, y*separacion - offset, z*separacion - offset);
-                        
-                        var p = sphere({
-                            pos: pos_inicial,
-                            radius: 0.7,
-                            color: vec(0, 0.6, 1),
-                            shininess: 0.6
-                        });
-                        
-                        // Propiedades físicas personalizadas
-                        p.v = vec(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5);
-                        p.home = pos_inicial; // Guardamos su posición original para el estado sólido
-                        
-                        particulas.push(p);
-                    }
-                }
-            }
-
-            // --- UI: Texto y Slider ---
-            var texto_estado = wtext({text: "Estado: <b>Líquido</b> (20 °C)"});
-            scene.append_to_caption("\n\n");
-
-            // Función que se ejecuta al mover el slider
-            function ajustar_temperatura(s) {
-                var t = s.value;
-                var col;
+            p.v = fuerza + vibracion
+            p.pos = p.pos + p.v * dt * 0.1 # Se mueven muy poco
+            
+        # LÓGICA LÍQUIDO/GAS (Rebote)
+        else:
+            if mag(p.v) > 0:
+                p.v = norm(p.v) * velocidad_base
+            
+            p.pos = p.pos + p.v * dt
+            
+            # Rebotes
+            if abs(p.pos.x) > pared:
+                p.v.x *= -1
+                # Corrección para que no se escapen
+                if p.pos.x > 0: p.pos.x = pared
+                else: p.pos.x = -pared
                 
-                if (t < 0) {
-                    estado_actual = "solido";
-                    velocidad_base = 0.5;
-                    col = color.blue;
-                    texto_estado.text = "Estado: <b>Sólido</b> (" + t + " °C)";
-                } else if (t >= 100) {
-                    estado_actual = "gaseoso";
-                    velocidad_base = 8.0;
-                    col = color.red;
-                    texto_estado.text = "Estado: <b>Gaseoso</b> (" + t + " °C)";
-                } else {
-                    estado_actual = "liquido";
-                    velocidad_base = 2.0;
-                    col = vec(0, 0.6, 1);
-                    texto_estado.text = "Estado: <b>Líquido</b> (" + t + " °C)";
-                }
-
-                // Actualizar color de todas
-                for (var i = 0; i < particulas.length; i++) {
-                    particulas[i].color = col;
-                }
-            }
-
-            scene.append_to_caption("Frío  ");
-            slider({min: -20, max: 120, value: 20, length: 300, bind: ajustar_temperatura});
-            scene.append_to_caption("  Caliente");
-
-            // --- BUCLE PRINCIPAL (ANIMACIÓN) ---
-            var dt = 0.01;
-            
-            while (true) {
-                await rate(60); // 60 FPS
+            if abs(p.pos.y) > pared:
+                p.v.y *= -1
+                if p.pos.y > 0: p.pos.y = pared
+                else: p.pos.y = -pared
                 
-                for (var i = 0; i < particulas.length; i++) {
-                    var p = particulas[i];
-
-                    if (estado_actual === "solido") {
-                        // --- SÓLIDO: Vibración alrededor de 'home' ---
-                        // En JS GlowScript usamos .sub() y .add() para vectores
-                        var fuerza = p.home.sub(p.pos).multiply(8); 
-                        var vibracion = vec(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).multiply(3);
-                        
-                        p.v = fuerza.add(vibracion);
-                        // p.pos = p.pos + p.v * dt * 0.1
-                        p.pos = p.pos.add(p.v.multiply(dt * 0.1));
-
-                    } else {
-                        // --- LÍQUIDO / GAS: Movimiento Libre ---
-                        
-                        // Normalizar velocidad (Termostato)
-                        if (mag(p.v) > 0) {
-                            p.v = norm(p.v).multiply(velocidad_base);
-                        }
-
-                        // p.pos = p.pos + p.v * dt
-                        p.pos = p.pos.add(p.v.multiply(dt));
-
-                        // Rebotes (Manualmente por coordenadas)
-                        // Eje X
-                        if (p.pos.x > limite) { p.pos.x = limite; p.v.x *= -1; }
-                        else if (p.pos.x < -limite) { p.pos.x = -limite; p.v.x *= -1; }
-                        
-                        // Eje Y
-                        if (p.pos.y > limite) { p.pos.y = limite; p.v.y *= -1; }
-                        else if (p.pos.y < -limite) { p.pos.y = -limite; p.v.y *= -1; }
-                        
-                        // Eje Z
-                        if (p.pos.z > limite) { p.pos.z = limite; p.v.z *= -1; }
-                        else if (p.pos.z < -limite) { p.pos.z = -limite; p.v.z *= -1; }
-                    }
-                }
-            }
-        };
-
-        // Arrancamos el script
-        $(function(){
-            window.__glowscript_main__($("#glowscript"));
-        });
+            if abs(p.pos.z) > pared:
+                p.v.z *= -1
+                if p.pos.z > 0: p.pos.z = pared
+                else: p.pos.z = -pared
 
     </script>
+
+    <script type="text/javascript">
+        $(function() {
+            // Buscamos el script de tipo "text/vpython"
+            var scriptText = $('script[type="text/vpython"]').text();
+            
+            // Verificamos que se haya encontrado el código
+            if(!scriptText) {
+                console.error("No se encontró el código VPython");
+                return;
+            }
+
+            // Usamos el compilador de GlowScript
+            var compiler_url = "https://s3.amazonaws.com/glowscript/package/RSrun.3.2.min.js";
+            
+            // Esta función compila y ejecuta el código Python dentro del div #glowscript
+            window.__context = { 
+                glowscript_container: $("#glowscript") 
+            };
+            
+            // Compilar y ejecutar
+            try {
+                // Compila de Python a JS
+                var js = glowscript_compile(scriptText, {lang: 'vpython', version: '3.2'});
+                // Ejecuta el JS resultante
+                eval(js);
+            } catch(err) {
+                console.error("Error compilando VPython:", err);
+                $("#glowscript").html("<p style='color:red; padding:20px'>Error al cargar la simulación: " + err.message + "</p>");
+            }
+        });
+    </script>
+
 </body>
 </html>
