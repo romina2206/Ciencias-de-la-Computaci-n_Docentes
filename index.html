@@ -3,19 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estados de la Materia - Final</title>
+    <title>Estados de la Materia - Modelo 3D</title>
 
     <style>
-        body { font-family: sans-serif; background: #eee; text-align: center; padding: 20px; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #eee; 
+            text-align: center; 
+            padding: 20px; 
+            margin: 0;
+        }
+        
+        h1 { color: #5A2382; margin-bottom: 5px; }
         
         #container { 
             position: relative; 
             width: 640px; 
             height: 480px; 
             background: white; 
-            margin: 0 auto; 
+            margin: 20px auto; 
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             overflow: hidden;
         }
     </style>
@@ -44,7 +52,7 @@
             "use strict";
 
             // --- PASO CLAVE: DESEMPAQUETAR LA LIBRERÍA ---
-            // Aquí arreglamos el error "canvas is not defined"
+            // Esto soluciona el error "canvas is not defined"
             var gs = window.glowscript; // El objeto principal
             
             var canvas = gs.canvas;
@@ -55,27 +63,21 @@
             var rate = gs.rate;
             var slider = gs.slider;
             var wtext = gs.wtext;
-            var distant_light = gs.distant_light;
             
-            // Funciones matemáticas vectoriales
-            var mag = gs.mag;
-            var norm = gs.norm;
-            var random = Math.random; // Usamos JS nativo para random
+            // Usamos Math nativo para evitar problemas de dependencias
+            var random = Math.random; 
 
             // --- 1. ESCENA ---
-            var scene = canvas(); // Ahora sí va a funcionar
+            var scene = canvas();
             scene.width = 640;
             scene.height = 480;
             scene.background = color.white;
             scene.range = 12;
             scene.userspin = true;
             scene.userzoom = false;
-            
-            // Título interno (espacio)
             scene.caption = "\n";
 
             // --- 2. OBJETOS ESTÁTICOS ---
-            // Caja
             box({pos:vec(0,0,0), size:vec(20,20,20), opacity:0.1, color:color.black});
             var pared = 9.4;
 
@@ -160,7 +162,6 @@
 
                     if(estado === "solido") {
                         // --- SÓLIDO: Vibrar en el lugar ---
-                        // Usamos matemática simple de JS para evitar errores de vectores
                         var fx = (p.home.x - p.pos.x) * 0.8; // Fuerza resorte
                         var fy = (p.home.y - p.pos.y) * 0.8;
                         var fz = (p.home.z - p.pos.z) * 0.8;
