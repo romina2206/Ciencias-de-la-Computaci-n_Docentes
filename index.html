@@ -169,4 +169,175 @@
 
     </script>
 </body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estados de la Materia - Intento Final</title>
+
+    <style>
+        body { font-family: sans-serif; background: #eee; text-align: center; padding: 20px; }
+        #container { 
+            position: relative; 
+            width: 600px; 
+            height: 400px; 
+            background: white; 
+            margin: 0 auto; 
+            border: 2px solid #ccc;
+        }
+        /* Esto asegura que el canvas de GlowScript se ajuste al div */
+        #container canvas { width: 100% !important; height: 100% !important; }
+    </style>
+
+    <link type="text/css" href="https://s3.amazonaws.com/glowscript/css/redmond/2.1/jquery-ui.custom.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/lib/jquery/2.1/jquery-ui.custom.min.js"></script>
+    <script type="text/javascript" src="https://s3.amazonaws.com/glowscript/package/glow.3.2.min.js"></script>
+</head>
+
+<body>
+
+    <h1>Estados de la Materia</h1>
+    <p>Si ves el cuadro blanco abajo, abrí la consola con F12 para ver mensajes.</p>
+    
+    <div id="container"></div>
+
+    <script type="text/javascript">
+        // 1. Enlazar GlowScript al div "container"
+        window.__context = { glowscript_container: $("#container") };
+
+        // 2. Función Principal (Debe ser ASYNC)
+        async function __main__() {
+            "use strict";
+            console.log("INICIANDO GLOWSCRIPT...");
+
+            // --- ESCENA ---
+            var scene = canvas();
+            scene.width = 600;
+            scene.height = 400;
+            scene.background = color.white;
+            scene.range = 12; 
+            
+            // --- LUZ (Para asegurar que se vean los objetos) ---
+            scene.lights = [];
+            distant_light({direction:vec(1,1,1), color:color.gray(0.8)});
+            distant_light({direction:vec(-1,-1,-0.5), color:color.gray(0.3)});
+
+            // --- CAJA ---
+            var wall = 9.5;
+            box({pos:vec(0,0,0), size:vec(20,20,20), color:color.black, opacity:0.1});
+            
+            console.log("ESCENA CREADA.");
+
+            // --- PARTICULAS ---
+            var particulas = [];
+            var N = 4; // 4x4x4 = 64 partículas
+            var sep = 4.0;
+            var off = 6.0;
+
+            // Crear esferas
+            for(var x=0; x<N; x++){
+                for(var y=0; y<N; y++){
+                    for(var z=0; z<N; z++){
+                        var px = x*sep - off;
+                        var py = y*sep - off;
+                        var pz = z*sep - off;
+
+                        var p = sphere({
+                            pos: vec(px, py, pz),
+                            radius: 0.8, // Bien grandes para verlas
+                            color: color.blue
+                        });
+
+                        // Propiedades manuales (sin vectores complejos)
+                        p.vx = (Math.random()-0.5);
+                        p.vy = (Math.random()-0.5);
+                        p.vz = (Math.random()-0.5);
+                        
+                        // Guardamos posición inicial
+                        p.homeX = px; 
+                        p.homeY = py; 
+                        p.homeZ = pz;
+
+                        particulas.push(p);
+                    }
+                }
+            }
+            console.log("PARTICULAS CREADAS: " + particulas.length);
+
+            // --- SLIDER (Simple) ---
+            scene.append_to_caption("\nTemperatura: ");
+            
+            var temp = 20;
+            var estado = "liquido";
+            var velocidad = 1.0;
+
+            function cambiar_t(s){
+                temp = s.value;
+                if(temp < 0) { estado = "solido"; velocidad = 0.5; }
+                else if(temp > 100) { estado = "gaseoso"; velocidad = 5.0; }
+                else { estado = "liquido"; velocidad = 1.5; }
+            }
+            
+            slider({min:-20, max:120, value:20, length:300, bind:cambiar_t});
+
+            // --- BUCLE INFINITO ---
+            console.log("INICIANDO BUCLE...");
+            var dt = 0.1;
+
+            while(true){
+                await rate(60); // ¡MANDATORIO!
+
+                for(var i=0; i<particulas.length; i++){
+                    var p = particulas[i];
+
+                    if(estado === "solido"){
+                        // Vibrar en sitio
+                        var fx = (p.homeX - p.pos.x) * 0.5;
+                        var fy = (p.homeY - p.pos.y) * 0.5;
+                        var fz = (p.homeZ - p.pos.z) * 0.5;
+                        
+                        p.vx = fx + (Math.random()-0.5);
+                        p.vy = fy + (Math.random()-0.5);
+                        p.vz = fz + (Math.random()-0.5);
+
+                        p.pos.x += p.vx * 0.1;
+                        p.pos.y += p.vy * 0.1;
+                        p.pos.z += p.vz * 0.1;
+                    } 
+                    else {
+                        // Mover libre
+                        // Normalizar velocidad (truco manual)
+                        var v_mag = Math.sqrt(p.vx*p.vx + p.vy*p.vy + p.vz*p.vz);
+                        if(v_mag > 0.01) {
+                           p.vx = (p.vx/v_mag) * velocidad;
+                           p.vy = (p.vy/v_mag) * velocidad;
+                           p.vz = (p.vz/v_mag) * velocidad;
+                        }
+
+                        p.pos.x += p.vx * dt;
+                        p.pos.y += p.vy * dt;
+                        p.pos.z += p.vz * dt;
+
+                        // Rebotes simples
+                        if(p.pos.x > wall) { p.pos.x = wall; p.vx *= -1; }
+                        if(p.pos.x < -wall) { p.pos.x = -wall; p.vx *= -1; }
+                        
+                        if(p.pos.y > wall) { p.pos.y = wall; p.vy *= -1; }
+                        if(p.pos.y < -wall) { p.pos.y = -wall; p.vy *= -1; }
+
+                        if(p.pos.z > wall) { p.pos.z = wall; p.vz *= -1; }
+                        if(p.pos.z < -wall) { p.pos.z = -wall; p.vz *= -1; }
+                    }
+                }
+            }
+        }
+
+        // Arrancar
+        $(function(){ __main__() });
+
+    </script>
+</body>
 </html>
